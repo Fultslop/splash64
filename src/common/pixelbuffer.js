@@ -1,3 +1,5 @@
+import { applyFullCRTEffect } from './postrender.js';
+
 // PixelBuffer — software rasterizer backed by ImageData.
 // All drawing uses palette indices (0–31). The palette is fixed at construction,
 // enforcing the 32-color constraint and enabling palette swapping.
@@ -123,6 +125,8 @@ export class PixelBuffer {
 
   // Blit pixel buffer to canvas context.
   flush(ctx) {
+    // apply post render effects
+    applyFullCRTEffect(this.imageData);
     ctx.putImageData(this.imageData, 0, 0);
   }
 
