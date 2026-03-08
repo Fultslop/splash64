@@ -7,18 +7,6 @@
 
 import { drawChar, drawLine } from './charset.js';
 
-// Palette indices into C64_PALETTE.
-const P = {
-  BG:    6,   // Blue — screen background
-  BORD:  14,  // Light Blue — border strip
-  TEXT:  14,  // Light Blue — all text
-};
-
-// Color-cooling sequence applied to each character as new chars are plotted.
-// age 0 = just placed (white), cools down to settled light blue.
-const COOL_SEQ = [1, 7, 1, 7, 3, 7, 3, 5, 14];
-//                W  Cy  G  LB  B  LB  LB  (C64 palette indices)
-
 // The C64 active display is 320×200 (40×25 chars). When the buffer is larger,
 // the active area is centred and the surrounding region shows the border colour.
 const ACTIVE_W = 320;
@@ -26,34 +14,14 @@ const ACTIVE_H = 200;
 const COLS     = 40;
 const ROWS     = 25;
 
-// Attribution messages shown in the bottom border while the program text prints.
-// Loaded from attribution.json; each message is an array of 1–N line strings.
-// Appear char-by-char, hold, dissolve, then a gap before the next message.
+// Attribution timing — not user-facing content so kept as local constants.
 const ATTR_SPEED = 25;   // chars/sec (matches text plotter speed)
 const ATTR_HOLD  = 5.0;  // seconds fully visible before dissolving
 const ATTR_GAP   = 1.0;  // seconds between messages
 
-// Boot screen text (authentic Commodore 64, then our READY prompt).
-const BOOT_LINES = [
-  '    **** COMMODORE 64 BASIC V2 ****',
-  '',
-  ' 64K RAM SYSTEM  38911 BASIC BYTES FREE',
-  '',
-  '',
-  'READY.',
-];
-
-// What appears after LOAD ... ENTER.
-const LOAD_RESPONSE = [
-  '',
-  'SEARCHING FOR FULTSLOP',
-  'LOADING',
-  '',
-  'READY.',
-];
-
 export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
   const { width, height } = buffer;
+  const { palette, coolSeq, bootLines, loadResponse, settleColors } = config;
 
   // Centre the 320×200 active area in the buffer (border fills the rest).
   const ox = Math.floor((width  - ACTIVE_W) / 2);
@@ -63,7 +31,7 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
   const { charW, charH } = charset;
 
   // Settled color per markdown style once the cooling sequence completes.
-  const SETTLE = config.settleColors ?? [14, 7, 3]; // normal, bold, code
+  const SETTLE = settleColors ?? [14, 7, 3]; // normal, bold, code
 
   // --- State ---
   const lines      = [];      // complete text rows on screen
@@ -145,14 +113,14 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
   // --- Phase transitions ---
 
   function doBootPhase() {
-    for (const l of BOOT_LINES) pushLine(l);
+    for (const l of bootLines) pushLine(l);
     pushLine('');  // cursor row
     setPhase('WAIT_READY');
   }
 
   function doLoadResponse() {
     // Commit the typed LOAD line, then append system response.
-    for (const l of LOAD_RESPONSE) pushLine(l);
+    for (const l of loadResponse) pushLine(l);
     pushLine('');  // cursor row for RUN
     setPhase('WAIT_READY2');
   }
@@ -313,9 +281,9 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
 
   function draw() {
     // Border area (fills everything outside the 320×200 active region).
-    buffer.fillRect(0, 0, width, height, P.BORD);
+    buffer.fillRect(0, 0, width, height, palette.border);
     // Active display area.
-    buffer.fillRect(ox, oy, ACTIVE_W, ACTIVE_H, P.BG);
+    buffer.fillRect(ox, oy, ACTIVE_W, ACTIVE_H, palette.background);
 
     // Text — each character colored by how many chars have been plotted since it appeared.
     for (let r = 0; r < lines.length && r < rows; r++) {
@@ -323,8 +291,8 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
       for (let c = 0; c < line.length; c++) {
         const gen   = cellGens[r]?.[c] ?? -1;
         const age   = globalCharCount - gen;
-        const color = gen < 0          ? P.TEXT
-          : age < COOL_SEQ.length      ? COOL_SEQ[age]
+        const color = gen < 0            ? palette.text
+          : age < coolSeq.length        ? coolSeq[age]
           : SETTLE[cellStyles[r]?.[c] ?? 0];
         drawChar(buffer, c, r, line[c], color, charset, ox, oy);
       }
@@ -336,7 +304,7 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
         ox + cursorCol * charW,
         oy + cursorRow * charH,
         charW, charH,
-        P.TEXT,
+        palette.text,
       );
     }
 
@@ -353,7 +321,7 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
         const lStart = Math.max(attrVanished - charOffset, 0);
         const lEnd   = Math.max(Math.min(attrVisible, charOffset + line.length) - charOffset, 0);
         if (lEnd > lStart) {
-          drawLine(buffer, 0, 0, line.slice(lStart, lEnd), P.BG, charset,
+          drawLine(buffer, 0, 0, line.slice(lStart, lEnd), palette.background, charset,
             width - line.length * charW + lStart * charW, baseY + i * charH);
         }
         charOffset += line.length;

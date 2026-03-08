@@ -55,13 +55,40 @@ export async function generateC64Config() {
   const { text: tickerText, styles: tickerStyles } = parseMarkdown(rawText);
 
   return {
+    // --- Screen text ---
+    bootLines: [
+      '    **** COMMODORE 64 BASIC V2 ****',
+      '',
+      ' 64K RAM SYSTEM  38911 BASIC BYTES FREE',
+      '',
+      '',
+      'READY.',
+    ],
+    loadResponse: [
+      '',
+      'SEARCHING FOR FULTSLOP',
+      'LOADING',
+      '',
+      'READY.',
+    ],
     loadCmd:       'LOAD "FULTSLOP",8,1',
     tickerText,
     tickerStyles,
     attributions,
-    // Settled color per markdown style (C64 palette indices): normal, bold, code.
-    // Indexed by the style value stored in tickerStyles (0/1/2).
-    settleColors:  [14, 7, 3],  // light blue, yellow, cyan
+
+    // --- Colors (C64 palette indices) ---
+    palette: {
+      background: 6,   // Blue
+      border:     14,  // Light Blue
+      text:       14,  // Light Blue
+    },
+    // Cooling animation: sequence of palette indices from "hot" to settled.
+    // age 0 = just placed, age >= coolSeq.length → use settleColors.
+    coolSeq:      [1, 7, 1, 7, 3, 7, 3, 5, 14],
+    // Settled color per markdown style: normal, bold, code.
+    settleColors: [14, 7, 3],  // light blue, yellow, cyan
+
+    // --- Timing ---
     typeSpeed:     10,   // chars/sec — user typing (LOAD, RUN)
     outputSpeed:   25,   // chars/sec — program output (ticker text)
     waitReady:     0.8,  // seconds to blink cursor at each READY prompt
