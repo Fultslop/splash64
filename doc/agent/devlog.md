@@ -60,6 +60,16 @@ Format:
 - `sunset.js` stripped of all `Math.random()` calls — reads layout directly from `config`.
 - `main.js` import list simplified; palette no longer imported directly.
 
+**08/03/2026 Claude [FEAT]**: C64 boot sequence demo.
+- New demo: `src/demo/c64/` — recreates the Commodore 64 startup screen.
+- Boot text appears instantly; then types `LOAD "FULTSLOP",8,1`, shows `SEARCHING / LOADING / READY.`, types `RUN`, plots devlog ticker text char-by-char, waits, then transitions to sunset.
+- `charset.js`: per-glyph rasterization with `fillText(ch, 0, 0)` — no x-offset, exact grid alignment. `charW` measured via `measureText` on the loaded font.
+- `C64_PALETTE`: 16 authentic Colodore colors padded to 32 slots. Blue (6) = background, Light Blue (14) = border + text.
+- `main.js`: demo selection (sunset / c64) with localStorage no-repeat, separate from palette selection.
+- `renderer.js`: `startLoop` now returns `{ setUpdate }` for live update-fn swap; `initRenderer` exposes `setPalette`.
+- `PixelBuffer.setPalette()`: swaps the active palette at runtime, enabling seamless c64→sunset transition without page reload.
+- `@font-face` for C64 Pro Mono declared in `index.html`; force-loaded in `main.js` via `document.fonts.load()` before `buildCharset` (local @font-face fonts aren't fetched by `document.fonts.ready` unless used in CSS).
+
 **08/03/2026 Claude [FIX]**: font rasterizer rewrite — per-character rendering with explicit letter spacing.
 - Previous approach (whole string → one canvas) caused: canvas overflow for long strings (silent pixel corruption), no control over letter spacing, antialiasing threshold holes.
 - New approach in `font.js`: each character rasterized to its own canvas, placed manually with `letterSpacing` gap.

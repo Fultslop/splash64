@@ -3,14 +3,22 @@
 
 ## Overview
 
-A retro-style HTML5 demo/splash screen engine. Pure ES6+ modules, HTML5 Canvas, zero npm packages. Three demos: `sunset`, `galaga`, `cube`. On page load one is picked at random (never repeating on refresh).
+A retro-style HTML5 demo/splash screen engine. Pure ES6+ modules, HTML5 Canvas, zero npm packages. Active demos: `sunset` (Japanese twilight scene), `c64` (Commodore 64 boot sequence). On page load one is picked at random (never repeating on refresh). The c64 demo transitions into sunset at the end of its sequence.
 
 ---
 
 ## Render Pipeline
 
 ```
-load page → await fonts → rasterize sprites → generateConfig → initRenderer → load ticker → startLoop
+load page → await fonts.ready → [force-load C64 font if needed]
+         → chooseDemoName (localStorage no-repeat)
+         → initRenderer (neutral palette) → startLoop (noop)
+         → demo setup → setUpdate(demoUpdate) → running
+```
+
+**Demo swap (c64 → sunset)**:
+```
+c64 DONE phase → onComplete() → setPalette(sunsetPalette) → setUpdate(sunsetUpdate)
 ```
 
 - **Render resolution**: 320×200 (retro, easily changed in `renderer.js`)
@@ -22,18 +30,21 @@ load page → await fonts → rasterize sprites → generateConfig → initRende
 ## Key Files
 
 ```
-index.html                      Shell: black bg, centered canvas, pixelated CSS
-src/main.js                     Entry: fonts → rasterize title → generateConfig → initRenderer → ticker → startLoop
-src/common/renderer.js          initRenderer(canvas, palette) → { buffer, present }; exports RENDER_W, RENDER_H
-                                startLoop(update)
-src/common/pixelbuffer.js       PixelBuffer class — software rasterizer (see below)
-src/common/palette.js           Named palette arrays (SUNSET, CRIMSON, OCEAN) + PALETTES export. Max 32 colors each.
+index.html                      Shell: black bg, centered canvas, pixelated CSS; @font-face for C64 Pro Mono
+src/main.js                     Entry: demo selection, font loading, demo lifecycle, c64→sunset transition
+src/common/renderer.js          initRenderer(canvas, palette) → { buffer, present, setPalette }
+                                startLoop(update) → { setUpdate } — supports live update-fn swap
+src/common/pixelbuffer.js       PixelBuffer class — software rasterizer; setPalette() for runtime swap
+src/common/palette.js           SUNSET, CRIMSON, OCEAN (sunset variants) + C64_PALETTE + PALETTES array
 src/common/font.js              rasterizeText(text, fontFamily, fontSize, scaleX, letterSpacing) → sprite
 src/common/ticker.js            loadTickerText(url, start, end) + createTicker(sprite, speed)
 src/common/parallax.js          createParallax(layers) → { update, drawTiled }
 src/demo/sunset/config.js       generateSunsetConfig(titleSprite) → config — all per-session random choices
 src/demo/sunset/sunset.js       Sunset demo — reads layout from config, no randomisation inside
-src/demo/cube/                  (stub)
+src/demo/c64/charset.js         buildCharset(fontFamily, fontSize) → { sprites, charW, charH }
+                                drawChar / drawLine — grid-positioned glyph blitting
+src/demo/c64/config.js          generateC64Config() → config (async — fetches ticker text)
+src/demo/c64/c64.js             C64 boot sequence demo — state machine, calls onComplete() when done
 ```
 
 ---
@@ -150,6 +161,41 @@ Layer convention (sunset demo):
 8. **Ticker** — `blitSpriteScrolled`, Press Start 2P font, full-width dark bar, Y from config (random, above or below title with ≥30 px gap), palette idx 17 (SNOW)
 
 Upcoming: cherry blossom boids (overlay).
+
+---
+
+## C64 Demo
+
+Commodore 64 boot sequence, then loads and runs "FULTSLOP", then transitions to the sunset demo.
+
+**Palette**: `C64_PALETTE` — authentic 16-color Colodore values, padded to 32 slots. Key indices:
+- 6: Blue (screen background)
+- 14: Light Blue (border strips + all text)
+
+**Character grid**: C64 Pro Mono at 8px. Grid dimensions computed from font metrics:
+- `charW = Math.round(measureText('M').width)` — exact monospace advance width
+- `charH = 8` (fontSize)
+- `BORDER = 4` px strips on all edges
+- `cols = floor((320 - 8) / charW)`, `rows = floor((200 - 8) / charH)`
+
+**Charset** (`charset.js`): glyphs rasterized with `fillText(ch, 0, 0)` — no x-offset — so ink starts at pixel (0,0) and columns align exactly. One canvas per glyph, clipped to `charW × charH`.
+
+**Font loading**: `@font-face` fonts are only fetched by the browser when used in a CSS rule. Since 'C64 Pro Mono' is only used in canvas, `main.js` explicitly calls `await document.fonts.load('8px "C64 Pro Mono"')` before `buildCharset`.
+
+**Boot sequence** (state machine):
+```
+BOOT            → fill screen with boot text instantly
+WAIT_READY      → blink cursor 0.8 s
+TYPING_LOAD     → type LOAD "FULTSLOP",8,1 at 10 chars/s
+LOAD_RESPONSE   → append SEARCHING / LOADING / READY. instantly
+WAIT_READY2     → blink cursor 0.8 s
+TYPING_RUN      → type RUN at 10 chars/s
+TYPING_TICKER   → plot devlog ticker text at 25 chars/s, wrapping at cols
+WAIT_DONE       → hold 2.5 s
+DONE            → call onComplete() → setPalette + setUpdate → sunset
+```
+
+**Demo swap**: `c64.js` accepts an `onComplete` callback. `main.js` passes `() => startSunset(...)`. `startSunset` calls `buffer.setPalette(sunsetPalette)` then `setUpdate(sunsetDemo.update)` — no page reload.
 
 ---
 

@@ -34,7 +34,8 @@ export function initRenderer(displayCanvas, palette) {
     displayCtx.drawImage(offscreen, 0, 0, dw, dh);
   }
 
-  return { buffer, present, width: RENDER_W, height: RENDER_H };
+  return { buffer, present, width: RENDER_W, height: RENDER_H,
+           setPalette: p => buffer.setPalette(p) };
 }
 
 function getScaledSize() {
@@ -53,7 +54,8 @@ function applyScale(canvas) {
   canvas.style.height = `${dh}px`;
 }
 
-export function startLoop(update) {
+export function startLoop(initialUpdate) {
+  let update = initialUpdate;
   let last = null;
   function tick(timestamp) {
     const dt = last === null ? 0 : (timestamp - last) / 1000;
@@ -62,4 +64,5 @@ export function startLoop(update) {
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
+  return { setUpdate: fn => { update = fn; } };
 }

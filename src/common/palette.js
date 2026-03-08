@@ -138,6 +138,31 @@ export const OCEAN = [
   '#00ffcc', // 31 cyan accent
 ];
 
+// Authentic Commodore 64 16-color palette (Colodore values), padded to 32.
+export const C64_PALETTE = [
+  '#000000', // 0  Black
+  '#FFFFFF', // 1  White
+  '#9F4E44', // 2  Red
+  '#6ABFC6', // 3  Cyan
+  '#A057A3', // 4  Purple
+  '#5CAB5E', // 5  Green
+  '#50459B', // 6  Blue        ← screen background
+  '#C9D487', // 7  Yellow
+  '#A1683C', // 8  Orange
+  '#6D5412', // 9  Brown
+  '#CB7E75', // 10 Light Red
+  '#626262', // 11 Dark Grey
+  '#898989', // 12 Grey
+  '#9AE29B', // 13 Light Green
+  '#887ECB', // 14 Light Blue  ← border + text
+  '#ADADAD', // 15 Light Grey
+  // slots 16–31: unused, padded with black
+  '#000000','#000000','#000000','#000000',
+  '#000000','#000000','#000000','#000000',
+  '#000000','#000000','#000000','#000000',
+  '#000000','#000000','#000000','#000000',
+];
+
 // All available palettes — one is chosen at random on startup.
 export const PALETTES = [SUNSET, CRIMSON, OCEAN];
 

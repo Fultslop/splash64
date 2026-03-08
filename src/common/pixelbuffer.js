@@ -126,6 +126,14 @@ export class PixelBuffer {
     ctx.putImageData(this.imageData, 0, 0);
   }
 
+  // Swap the palette at runtime — used when transitioning between demos.
+  setPalette(palette) {
+    this._rgb = palette.map(hex => {
+      const v = parseInt(hex.slice(1), 16);
+      return [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff];
+    });
+  }
+
   // Internal: write raw RGB without palette lookup (used by fillCircle inner loop).
   setPixelRaw(x, y, r, g, b) {
     if (x < 0 || x >= this.width || y < 0 || y >= this.height) return;
