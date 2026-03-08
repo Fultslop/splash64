@@ -5,7 +5,7 @@
 //   BOOT → WAIT_READY → TYPING_LOAD → LOAD_RESPONSE →
 //   WAIT_READY2 → TYPING_RUN → TYPING_TICKER → WAIT_DONE → DONE
 
-import { drawLine, drawChar } from './charset.js';
+import { drawLine } from './charset.js';
 
 // Palette indices into C64_PALETTE.
 const P = {
@@ -20,6 +20,14 @@ const ACTIVE_W = 320;
 const ACTIVE_H = 200;
 const COLS     = 40;
 const ROWS     = 25;
+
+// Font attribution shown in the bottom border while the program text prints.
+// Two right-aligned lines; appears char-by-char, holds, then dissolves from the left.
+const ATTR_L1    = 'C64 FONT:';
+const ATTR_L2    = 'HTTPS://STYLE64.ORG/C64-TRUETYPE';
+const ATTR_TOTAL = ATTR_L1.length + ATTR_L2.length;
+const ATTR_SPEED = 25;   // chars/sec (matches text plotter speed)
+const ATTR_HOLD  = 5.0;  // seconds fully visible before dissolving
 
 // Boot screen text (authentic Commodore 64, then our READY prompt).
 const BOOT_LINES = [
@@ -72,6 +80,14 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
   let   blinkAccum  = 0;
   const BLINK_HALF  = 0.3;   // seconds per half-period
 
+  // Attribution animation state.
+  // HIDDEN → APPEARING → VISIBLE → DISAPPEARING → GONE
+  let   attrPhase     = 'HIDDEN';
+  let   attrVisible   = 0;   // chars revealed (0..ATTR_TOTAL)
+  let   attrVanished  = 0;   // chars erased from left (0..ATTR_TOTAL)
+  let   attrAccum     = 0;
+  let   attrHoldTimer = 0;
+
   // --- Helpers ---
 
   function pushLine(text = '') {
@@ -120,9 +136,11 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
   }
 
   function doRunResponse() {
-    // The "program" starts — begin outputting ticker text.
-    tickerText = config.tickerText.toUpperCase();
-    tickerIdx  = 0;
+    // The "program" starts — begin outputting ticker text and attribution.
+    tickerText  = config.tickerText.toUpperCase();
+    tickerIdx   = 0;
+    attrPhase   = 'APPEARING';
+    attrAccum   = 0;
     pushLine('');
     setPhase('TYPING_TICKER');
   }
@@ -143,6 +161,32 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
       cursorCol++;
     }
     return false;
+  }
+
+  function updateAttribution(dt) {
+    switch (attrPhase) {
+      case 'APPEARING': {
+        attrAccum += dt * ATTR_SPEED;
+        const n = Math.floor(attrAccum);
+        attrAccum -= n;
+        attrVisible = Math.min(attrVisible + n, ATTR_TOTAL);
+        if (attrVisible >= ATTR_TOTAL) { attrPhase = 'VISIBLE'; attrHoldTimer = 0; }
+        break;
+      }
+      case 'VISIBLE': {
+        attrHoldTimer += dt;
+        if (attrHoldTimer >= ATTR_HOLD) { attrPhase = 'DISAPPEARING'; attrAccum = 0; }
+        break;
+      }
+      case 'DISAPPEARING': {
+        attrAccum += dt * ATTR_SPEED;
+        const n = Math.floor(attrAccum);
+        attrAccum -= n;
+        attrVanished = Math.min(attrVanished + n, ATTR_TOTAL);
+        if (attrVanished >= ATTR_TOTAL) attrPhase = 'GONE';
+        break;
+      }
+    }
   }
 
   // --- Update ---
@@ -218,6 +262,8 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
         break;
     }
 
+    if (attrPhase !== 'HIDDEN' && attrPhase !== 'GONE') updateAttribution(dt);
+
     // --- Render ---
     draw();
   }
@@ -241,6 +287,30 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
         charW, charH,
         P.TEXT,
       );
+    }
+
+    // Font attribution — two right-aligned lines in the bottom border.
+    // Appears char-by-char, holds, then dissolves from the left.
+    if (attrPhase !== 'HIDDEN' && attrPhase !== 'GONE') {
+      const borderTopY = oy + ACTIVE_H;
+      const borderH    = height - borderTopY;
+      const baseY      = borderTopY + Math.floor((borderH - 2 * charH) / 2);
+
+      // Line 1 — visible slice [attrVanished .. min(attrVisible, L1.length))
+      const l1Start = Math.min(attrVanished, ATTR_L1.length);
+      const l1End   = Math.min(attrVisible,  ATTR_L1.length);
+      if (l1End > l1Start) {
+        drawLine(buffer, 0, 0, ATTR_L1.slice(l1Start, l1End), P.BG, charset,
+          width - ATTR_L1.length * charW + l1Start * charW, baseY);
+      }
+
+      // Line 2 — visible slice with indices offset by L1.length
+      const l2Start = Math.max(attrVanished - ATTR_L1.length, 0);
+      const l2End   = Math.max(attrVisible  - ATTR_L1.length, 0);
+      if (l2End > l2Start) {
+        drawLine(buffer, 0, 0, ATTR_L2.slice(l2Start, l2End), P.BG, charset,
+          width - ATTR_L2.length * charW + l2Start * charW, baseY + charH);
+      }
     }
   }
 

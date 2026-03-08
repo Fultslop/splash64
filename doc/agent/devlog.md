@@ -77,6 +77,12 @@ Format:
 - `c64.js`: terminal scroll — when the screen is full during ticker output, `lines.shift()` scrolls all text up one row instead of stopping.
 - `config.js`: replaced `loadTickerText` (which collapsed all lines) with `loadPrinterText` — preserves source newlines, collapses runs of 2+ blanks to 1. Newlines in the text now cause real line breaks in the terminal output.
 
+**08/03/2026 Claude [FEAT]**: C64 demo — animated font attribution in bottom border.
+- `c64.js`: two right-aligned lines (`C64 FONT:` / `HTTPS://STYLE64.ORG/C64-TRUETYPE`) in the bottom border strip, drawn in P.BG against the P.BORD background.
+- Own state machine: `HIDDEN → APPEARING → VISIBLE → DISAPPEARING → GONE`. Triggered at start of `TYPING_TICKER` phase.
+- Appears char-by-char at 25 chars/sec (matches text plotter), holds 5 s, then dissolves left-to-right at the same speed.
+- Slice math preserves right-alignment at all stages: each char is positioned relative to the full right-aligned string width, independent of how many chars are currently visible.
+
 **08/03/2026 Claude [FIX]**: font rasterizer rewrite — per-character rendering with explicit letter spacing.
 - Previous approach (whole string → one canvas) caused: canvas overflow for long strings (silent pixel corruption), no control over letter spacing, antialiasing threshold holes.
 - New approach in `font.js`: each character rasterized to its own canvas, placed manually with `letterSpacing` gap.

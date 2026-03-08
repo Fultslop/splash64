@@ -25,6 +25,6 @@ export async function generateC64Config() {
     typeSpeed:     10,   // chars/sec — user typing (LOAD, RUN)
     outputSpeed:   25,   // chars/sec — program output (ticker text)
     waitReady:     0.8,  // seconds to blink cursor at each READY prompt
-    waitDone:      2.5,  // seconds to hold screen after ticker finishes
+    waitDone:      5.0,  // seconds to hold screen after ticker finishes (shows font attribution)
   };
 }

@@ -196,11 +196,13 @@ LOAD_RESPONSE   → append SEARCHING / LOADING / READY. instantly
 WAIT_READY2     → blink cursor 0.8 s
 TYPING_RUN      → type RUN at 10 chars/s
 TYPING_TICKER   → plot devlog text at 25 chars/s; newlines cause line breaks; when screen full, scroll up one row
-WAIT_DONE       → hold 2.5 s
+WAIT_DONE       → hold 5.0 s
 DONE            → call onComplete() → setPalette + setUpdate → sunset
 ```
 
-**Demo swap**: `c64.js` accepts an `onComplete` callback. `main.js` passes `() => startSunset(...)`. `startSunset` calls `buffer.setPalette(sunsetPalette)` then `setUpdate(sunsetDemo.update)` — no page reload.
+**Font attribution**: two right-aligned lines (`C64 FONT:` / `HTTPS://STYLE64.ORG/C64-TRUETYPE`) in the bottom border strip, drawn in P.BG (dark blue) against P.BORD (light blue). Own sub-state machine: `HIDDEN → APPEARING → VISIBLE → DISAPPEARING → GONE`. Triggered at `TYPING_TICKER` start; appears char-by-char at 25 ch/s, holds 5 s, dissolves left-to-right at the same speed. Slice math keeps each character right-aligned at its fixed position throughout the animation.
+
+**Demo swap**: `c64.js` accepts an `onComplete` callback. `main.js` passes a closure that calls `renderer.resize(320, 200)` then `startSunset(newBuffer, ...)` — no page reload.
 
 ---
 
