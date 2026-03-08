@@ -42,6 +42,28 @@ function createFpsCounter() {
   };
 }
 
+// Music player — off by default, click to toggle. Starts on first click (browser policy).
+// Config: { src, volume (0..1), visible (show the button at all) }
+function createMusicPlayer({ src, volume = 0.5, visible = false } = {}) {
+  const audio  = new Audio(src);
+  audio.loop   = true;
+  audio.volume = volume;
+
+  const el = document.createElement('div');
+  el.textContent = '\u266a off';
+  el.style.cssText = 'position:fixed;top:8px;right:8px;font:bold 16px monospace;'
+    + 'color:#666;background:rgba(0,0,0,.55);padding:4px 10px;cursor:pointer;'
+    + `z-index:9999;user-select:none;display:${visible ? 'block' : 'none'}`;
+  document.body.appendChild(el);
+
+  let playing = false;
+  el.addEventListener('click', () => {
+    playing = !playing;
+    if (playing) { audio.play();  el.textContent = '\u266a on';  el.style.color = '#0f0'; }
+    else         { audio.pause(); el.textContent = '\u266a off'; el.style.color = '#666'; }
+  });
+}
+
 // Choose a demo name, never repeating the previous session's choice.
 function chooseDemoName() {
   const DEMOS   = ['sunset', 'c64'];
@@ -78,6 +100,7 @@ async function init() {
   const renderer  = initRenderer(canvas, C64_PALETTE, rw, rh);
   const { setUpdate } = startLoop(() => {});  // noop until first demo is ready
   const sampleFps = createFpsCounter();
+  createMusicPlayer({ src: './music/very-superbeep.mp3', volume: 0.5, visible: demoName === 'c64' });
 
   if (demoName === 'c64') {
     renderer.setPalette(C64_PALETTE);
