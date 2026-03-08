@@ -83,6 +83,23 @@ Format:
 - Appears char-by-char at 25 chars/sec (matches text plotter), holds 5 s, then dissolves left-to-right at the same speed.
 - Slice math preserves right-alignment at all stages: each char is positioned relative to the full right-aligned string width, independent of how many chars are currently visible.
 
+**08/03/2026 Claude [FEAT]**: C64 demo — per-character color cooling effect on ticker text.
+- Each character plotted by the ticker starts white (C64 palette 1) and transitions through cyan → green → light blue → blue → light blue (settled) as subsequent characters are plotted — one step per new char, not per frame.
+- `globalCharCount` increments each time a character is placed; `cellGens[r][c]` stores the count at placement time; `age = globalCharCount - gen` drives the `COOL_SEQ` lookup.
+- Boot text, LOAD, and RUN lines are assigned gen `-1` (sentinel) so they render as plain light blue with no cycling.
+
+**08/03/2026 Claude [FEAT]**: C64 demo — multi-message attribution driven by JSON.
+- `src/demo/c64/attribution.json`: array of messages, each an array of 1–N line strings.
+- `config.js` fetches the JSON in parallel with the devlog ticker text.
+- Attribution state machine gains a `GAP` phase (1 s pause) between messages; `loadNextAttribution()` advances the index and sets `GONE` when exhausted.
+- Draw block generalised to N lines with dynamic vertical centering in the border strip.
+
+**08/03/2026 Claude [FEAT]**: FPS counter — DOM overlay, key-toggled, zero cost when hidden.
+- `main.js`: `createFpsCounter()` appends a fixed-position `<div>` (green monospace, top-left).
+- Press `f` to toggle visibility; counters reset on toggle-on so the first reading is always fresh.
+- Sampling only runs when visible: accumulates frame count + elapsed time, updates `textContent` every 500 ms (2 Hz). No cost at all when hidden — `sample(dt)` is an immediate return.
+- `sampleFps` passed through `startSunset` and `onComplete` so it survives the c64→sunset transition.
+
 **08/03/2026 Claude [FIX]**: font rasterizer rewrite — per-character rendering with explicit letter spacing.
 - Previous approach (whole string → one canvas) caused: canvas overflow for long strings (silent pixel corruption), no control over letter spacing, antialiasing threshold holes.
 - New approach in `font.js`: each character rasterized to its own canvas, placed manually with `letterSpacing` gap.

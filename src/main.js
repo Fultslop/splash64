@@ -12,6 +12,36 @@ import { buildCharset }                   from './demo/c64/charset.js';
 const C64_W = 384;
 const C64_H = 272;
 
+// FPS counter — DOM overlay, sampled at 2 Hz, toggled by pressing 'f'.
+// Zero cost when hidden: the sample() fn returns immediately.
+function createFpsCounter() {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;top:8px;left:8px;font:bold 13px monospace;'
+    + 'color:#0f0;background:rgba(0,0,0,.55);padding:2px 8px;display:none;z-index:9999';
+  document.body.appendChild(el);
+
+  let visible = false, frames = 0, accum = 0;
+
+  window.addEventListener('keydown', e => {
+    if (e.key === 'f') {
+      visible = !visible;
+      el.style.display = visible ? 'block' : 'none';
+      frames = 0; accum = 0;  // fresh reading on each toggle-on
+    }
+  });
+
+  return function sample(dt) {
+    if (!visible) return;
+    frames++;
+    accum += dt;
+    if (accum >= 0.5) {
+      el.textContent = `${Math.round(frames / accum)} fps`;
+      frames = 0;
+      accum  = 0;
+    }
+  };
+}
+
 // Choose a demo name, never repeating the previous session's choice.
 function chooseDemoName() {
   const DEMOS   = ['sunset', 'c64'];
@@ -23,7 +53,7 @@ function chooseDemoName() {
 }
 
 // Set up and start the sunset demo, swapping in the new palette and update fn.
-async function startSunset(buffer, present, setPalette, setUpdate) {
+async function startSunset(buffer, present, setPalette, setUpdate, sampleFps) {
   const titleSprite = rasterizeText('// Fultslop //', 'Shojumaru', 36);
   const config      = generateSunsetConfig(titleSprite);
 
@@ -34,7 +64,7 @@ async function startSunset(buffer, present, setPalette, setUpdate) {
   const ticker       = createTicker(tickerSprite, 40);
 
   const demo = createSunsetDemo(buffer, { titleSprite, ticker, config });
-  setUpdate(dt => { demo.update(dt); present(); });
+  setUpdate(dt => { sampleFps(dt); demo.update(dt); present(); });
 }
 
 async function init() {
@@ -47,6 +77,7 @@ async function init() {
   const [rw, rh]  = demoName === 'c64' ? [C64_W, C64_H] : [RENDER_W, RENDER_H];
   const renderer  = initRenderer(canvas, C64_PALETTE, rw, rh);
   const { setUpdate } = startLoop(() => {});  // noop until first demo is ready
+  const sampleFps = createFpsCounter();
 
   if (demoName === 'c64') {
     renderer.setPalette(C64_PALETTE);
@@ -62,13 +93,13 @@ async function init() {
     const onComplete = () => {
       // Shrink to the standard render resolution for the sunset demo.
       const newBuffer = renderer.resize(RENDER_W, RENDER_H);
-      startSunset(newBuffer, renderer.present, renderer.setPalette, setUpdate);
+      startSunset(newBuffer, renderer.present, renderer.setPalette, setUpdate, sampleFps);
     };
     const demo = createC64Demo(renderer.buffer, { charset, config, onComplete });
-    setUpdate(dt => { demo.update(dt); renderer.present(); });
+    setUpdate(dt => { sampleFps(dt); demo.update(dt); renderer.present(); });
 
   } else {
-    await startSunset(renderer.buffer, renderer.present, renderer.setPalette, setUpdate);
+    await startSunset(renderer.buffer, renderer.present, renderer.setPalette, setUpdate, sampleFps);
   }
 }
 

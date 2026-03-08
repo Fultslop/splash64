@@ -17,14 +17,18 @@ async function loadPrinterText(url, startLine = 0) {
 }
 
 export async function generateC64Config() {
-  const tickerText = await loadPrinterText('./doc/agent/devlog.md', 10);
+  const [tickerText, attributions] = await Promise.all([
+    loadPrinterText('./doc/agent/devlog.md', 10),
+    fetch('./src/demo/c64/attribution.json').then(r => r.json()),
+  ]);
 
   return {
     loadCmd:       'LOAD "FULTSLOP",8,1',
     tickerText,
+    attributions,
     typeSpeed:     10,   // chars/sec — user typing (LOAD, RUN)
     outputSpeed:   25,   // chars/sec — program output (ticker text)
     waitReady:     0.8,  // seconds to blink cursor at each READY prompt
-    waitDone:      5.0,  // seconds to hold screen after ticker finishes (shows font attribution)
+    waitDone:      5.0,  // seconds to hold screen after ticker finishes
   };
 }

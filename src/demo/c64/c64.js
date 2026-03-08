@@ -26,13 +26,12 @@ const ACTIVE_H = 200;
 const COLS     = 40;
 const ROWS     = 25;
 
-// Font attribution shown in the bottom border while the program text prints.
-// Two right-aligned lines; appears char-by-char, holds, then dissolves from the left.
-const ATTR_L1    = 'C64 FONT:';
-const ATTR_L2    = 'HTTPS://STYLE64.ORG/C64-TRUETYPE';
-const ATTR_TOTAL = ATTR_L1.length + ATTR_L2.length;
+// Attribution messages shown in the bottom border while the program text prints.
+// Loaded from attribution.json; each message is an array of 1–N line strings.
+// Appear char-by-char, hold, dissolve, then a gap before the next message.
 const ATTR_SPEED = 25;   // chars/sec (matches text plotter speed)
 const ATTR_HOLD  = 5.0;  // seconds fully visible before dissolving
+const ATTR_GAP   = 1.0;  // seconds between messages
 
 // Boot screen text (authentic Commodore 64, then our READY prompt).
 const BOOT_LINES = [
@@ -88,12 +87,17 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
   const BLINK_HALF  = 0.3;   // seconds per half-period
 
   // Attribution animation state.
-  // HIDDEN → APPEARING → VISIBLE → DISAPPEARING → GONE
-  let   attrPhase     = 'HIDDEN';
-  let   attrVisible   = 0;   // chars revealed (0..ATTR_TOTAL)
-  let   attrVanished  = 0;   // chars erased from left (0..ATTR_TOTAL)
-  let   attrAccum     = 0;
+  // HIDDEN → APPEARING → VISIBLE → DISAPPEARING → GAP → APPEARING → … → GONE
+  const attributions = config.attributions ?? [];
+  let   attrIdx      = 0;    // next message to show
+  let   attrLines    = [];   // current message: array of line strings
+  let   attrTotal    = 0;    // total chars in current message
+  let   attrPhase    = 'HIDDEN';
+  let   attrVisible  = 0;    // chars revealed (0..attrTotal)
+  let   attrVanished = 0;    // chars erased from left (0..attrTotal)
+  let   attrAccum    = 0;
   let   attrHoldTimer = 0;
+  let   attrGapTimer  = 0;
 
   // --- Helpers ---
 
@@ -150,10 +154,20 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
     // The "program" starts — begin outputting ticker text and attribution.
     tickerText  = config.tickerText.toUpperCase();
     tickerIdx   = 0;
-    attrPhase   = 'APPEARING';
-    attrAccum   = 0;
     pushLine('');
+    loadNextAttribution();
     setPhase('TYPING_TICKER');
+  }
+
+  function loadNextAttribution() {
+    if (attrIdx >= attributions.length) { attrPhase = 'GONE'; return; }
+    attrLines    = attributions[attrIdx++];
+    attrTotal    = attrLines.reduce((s, l) => s + l.length, 0);
+    attrVisible  = 0;
+    attrVanished = 0;
+    attrAccum    = 0;
+    attrHoldTimer = 0;
+    attrPhase    = 'APPEARING';
   }
 
   function appendTickerChar() {
@@ -184,8 +198,8 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
         attrAccum += dt * ATTR_SPEED;
         const n = Math.floor(attrAccum);
         attrAccum -= n;
-        attrVisible = Math.min(attrVisible + n, ATTR_TOTAL);
-        if (attrVisible >= ATTR_TOTAL) { attrPhase = 'VISIBLE'; attrHoldTimer = 0; }
+        attrVisible = Math.min(attrVisible + n, attrTotal);
+        if (attrVisible >= attrTotal) { attrPhase = 'VISIBLE'; attrHoldTimer = 0; }
         break;
       }
       case 'VISIBLE': {
@@ -197,8 +211,13 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
         attrAccum += dt * ATTR_SPEED;
         const n = Math.floor(attrAccum);
         attrAccum -= n;
-        attrVanished = Math.min(attrVanished + n, ATTR_TOTAL);
-        if (attrVanished >= ATTR_TOTAL) attrPhase = 'GONE';
+        attrVanished = Math.min(attrVanished + n, attrTotal);
+        if (attrVanished >= attrTotal) { attrPhase = 'GAP'; attrGapTimer = 0; }
+        break;
+      }
+      case 'GAP': {
+        attrGapTimer += dt;
+        if (attrGapTimer >= ATTR_GAP) loadNextAttribution();
         break;
       }
     }
@@ -309,27 +328,23 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
       );
     }
 
-    // Font attribution — two right-aligned lines in the bottom border.
-    // Appears char-by-char, holds, then dissolves from the left.
-    if (attrPhase !== 'HIDDEN' && attrPhase !== 'GONE') {
+    // Attribution messages — N right-aligned lines in the bottom border.
+    // Appears char-by-char, holds, dissolves, gaps, then shows next message.
+    if (attrPhase !== 'HIDDEN' && attrPhase !== 'GONE' && attrLines.length > 0) {
       const borderTopY = oy + ACTIVE_H;
       const borderH    = height - borderTopY;
-      const baseY      = borderTopY + Math.floor((borderH - 2 * charH) / 2);
+      const baseY      = borderTopY + Math.floor((borderH - attrLines.length * charH) / 2);
 
-      // Line 1 — visible slice [attrVanished .. min(attrVisible, L1.length))
-      const l1Start = Math.min(attrVanished, ATTR_L1.length);
-      const l1End   = Math.min(attrVisible,  ATTR_L1.length);
-      if (l1End > l1Start) {
-        drawLine(buffer, 0, 0, ATTR_L1.slice(l1Start, l1End), P.BG, charset,
-          width - ATTR_L1.length * charW + l1Start * charW, baseY);
-      }
-
-      // Line 2 — visible slice with indices offset by L1.length
-      const l2Start = Math.max(attrVanished - ATTR_L1.length, 0);
-      const l2End   = Math.max(attrVisible  - ATTR_L1.length, 0);
-      if (l2End > l2Start) {
-        drawLine(buffer, 0, 0, ATTR_L2.slice(l2Start, l2End), P.BG, charset,
-          width - ATTR_L2.length * charW + l2Start * charW, baseY + charH);
+      let charOffset = 0;
+      for (let i = 0; i < attrLines.length; i++) {
+        const line   = attrLines[i];
+        const lStart = Math.max(attrVanished - charOffset, 0);
+        const lEnd   = Math.max(Math.min(attrVisible, charOffset + line.length) - charOffset, 0);
+        if (lEnd > lStart) {
+          drawLine(buffer, 0, 0, line.slice(lStart, lEnd), P.BG, charset,
+            width - line.length * charW + lStart * charW, baseY + i * charH);
+        }
+        charOffset += line.length;
       }
     }
   }
