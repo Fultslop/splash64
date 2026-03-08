@@ -24,7 +24,7 @@ function chooseDemoName() {
 
 // Set up and start the sunset demo, swapping in the new palette and update fn.
 async function startSunset(buffer, present, setPalette, setUpdate) {
-  const titleSprite = rasterizeText('Fultslop - Claude', 'Shojumaru', 36);
+  const titleSprite = rasterizeText('// Fultslop //', 'Shojumaru', 36);
   const config      = generateSunsetConfig(titleSprite);
 
   setPalette(config.palette);

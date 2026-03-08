@@ -5,7 +5,7 @@
 //   BOOT → WAIT_READY → TYPING_LOAD → LOAD_RESPONSE →
 //   WAIT_READY2 → TYPING_RUN → TYPING_TICKER → WAIT_DONE → DONE
 
-import { drawLine } from './charset.js';
+import { drawChar, drawLine } from './charset.js';
 
 // Palette indices into C64_PALETTE.
 const P = {
@@ -13,6 +13,11 @@ const P = {
   BORD:  14,  // Light Blue — border strip
   TEXT:  14,  // Light Blue — all text
 };
+
+// Color-cooling sequence applied to each character as new chars are plotted.
+// age 0 = just placed (white), cools down to settled light blue.
+const COOL_SEQ = [1, 7, 1, 7, 3, 7, 3, 5, 14];
+//                W  Cy  G  LB  B  LB  LB  (C64 palette indices)
 
 // The C64 active display is 320×200 (40×25 chars). When the buffer is larger,
 // the active area is centred and the surrounding region shows the border colour.
@@ -59,7 +64,9 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
   const { charW, charH } = charset;
 
   // --- State ---
-  const lines = [];           // complete text rows on screen
+  const lines    = [];        // complete text rows on screen
+  const cellGens = [];        // cellGens[r][c] = globalCharCount when that char was placed
+  let   globalCharCount = 0;  // increments each time a character is plotted
   let   cursorRow = 0;        // row the cursor sits on
   let   cursorCol = 0;        // col (= chars typed on that row so far)
 
@@ -92,6 +99,8 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
 
   function pushLine(text = '') {
     lines.push(text);
+    // -1 = no cooling (boot / system response text stays plain light blue)
+    cellGens.push(new Array(text.length).fill(-1));
     cursorRow = lines.length - 1;
     cursorCol = text.length;
   }
@@ -100,13 +109,15 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
     typingText = text;
     typedChars = 0;
     charAccum  = 0;
-    lines[cursorRow] = '';
+    lines[cursorRow]    = '';
+    cellGens[cursorRow] = [];
     cursorCol = 0;
   }
 
   function advanceTyping(dt, speed) {
     charAccum += dt * speed;
     while (charAccum >= 1 && typedChars < typingText.length) {
+      cellGens[cursorRow].push(-1); // LOAD / RUN input — no cooling
       typedChars++;
       charAccum--;
     }
@@ -152,12 +163,16 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
 
     if (ch === '\n' || cursorCol >= cols) {
       // Scroll up when the screen is full, then add a new blank line at the bottom.
-      if (lines.length >= rows) lines.shift();
+      if (lines.length >= rows) {
+        lines.shift();
+        cellGens.shift();
+      }
       pushLine('');
     }
 
     if (ch !== '\n') {
       lines[cursorRow] += ch;
+      cellGens[cursorRow].push(globalCharCount++);
       cursorCol++;
     }
     return false;
@@ -274,9 +289,14 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
     // Active display area.
     buffer.fillRect(ox, oy, ACTIVE_W, ACTIVE_H, P.BG);
 
-    // Text.
+    // Text — each character colored by how many chars have been plotted since it appeared.
     for (let r = 0; r < lines.length && r < rows; r++) {
-      drawLine(buffer, 0, r, lines[r], P.TEXT, charset, ox, oy);
+      const line = lines[r];
+      for (let c = 0; c < line.length; c++) {
+        const gen   = cellGens[r]?.[c] ?? -1;
+        const color = gen < 0 ? P.TEXT : COOL_SEQ[Math.min(globalCharCount - gen, COOL_SEQ.length - 1)];
+        drawChar(buffer, c, r, line[c], color, charset, ox, oy);
+      }
     }
 
     // Cursor block.
