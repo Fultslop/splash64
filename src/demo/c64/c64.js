@@ -62,9 +62,13 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
   const rows = ROWS;
   const { charW, charH } = charset;
 
+  // Settled color per markdown style once the cooling sequence completes.
+  const SETTLE = config.settleColors ?? [14, 7, 3]; // normal, bold, code
+
   // --- State ---
-  const lines    = [];        // complete text rows on screen
-  const cellGens = [];        // cellGens[r][c] = globalCharCount when that char was placed
+  const lines      = [];      // complete text rows on screen
+  const cellGens   = [];      // cellGens[r][c]   = globalCharCount when that char was placed
+  const cellStyles = [];      // cellStyles[r][c] = markdown style (0=normal, 1=bold, 2=code)
   let   globalCharCount = 0;  // increments each time a character is plotted
   let   cursorRow = 0;        // row the cursor sits on
   let   cursorCol = 0;        // col (= chars typed on that row so far)
@@ -105,6 +109,7 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
     lines.push(text);
     // -1 = no cooling (boot / system response text stays plain light blue)
     cellGens.push(new Array(text.length).fill(-1));
+    cellStyles.push(new Array(text.length).fill(0));
     cursorRow = lines.length - 1;
     cursorCol = text.length;
   }
@@ -113,8 +118,9 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
     typingText = text;
     typedChars = 0;
     charAccum  = 0;
-    lines[cursorRow]    = '';
-    cellGens[cursorRow] = [];
+    lines[cursorRow]      = '';
+    cellGens[cursorRow]   = [];
+    cellStyles[cursorRow] = [];
     cursorCol = 0;
   }
 
@@ -122,6 +128,7 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
     charAccum += dt * speed;
     while (charAccum >= 1 && typedChars < typingText.length) {
       cellGens[cursorRow].push(-1); // LOAD / RUN input — no cooling
+      cellStyles[cursorRow].push(0);
       typedChars++;
       charAccum--;
     }
@@ -180,6 +187,7 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
       if (lines.length >= rows) {
         lines.shift();
         cellGens.shift();
+        cellStyles.shift();
       }
       pushLine('');
     }
@@ -187,6 +195,7 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
     if (ch !== '\n') {
       lines[cursorRow] += ch;
       cellGens[cursorRow].push(globalCharCount++);
+      cellStyles[cursorRow].push(config.tickerStyles[tickerIdx - 1] ?? 0);
       cursorCol++;
     }
     return false;
@@ -313,7 +322,10 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
       const line = lines[r];
       for (let c = 0; c < line.length; c++) {
         const gen   = cellGens[r]?.[c] ?? -1;
-        const color = gen < 0 ? P.TEXT : COOL_SEQ[Math.min(globalCharCount - gen, COOL_SEQ.length - 1)];
+        const age   = globalCharCount - gen;
+        const color = gen < 0          ? P.TEXT
+          : age < COOL_SEQ.length      ? COOL_SEQ[age]
+          : SETTLE[cellStyles[r]?.[c] ?? 0];
         drawChar(buffer, c, r, line[c], color, charset, ox, oy);
       }
     }
