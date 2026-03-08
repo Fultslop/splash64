@@ -18,9 +18,9 @@ function updateScanlineTable(h, strength) {
  * @param {number} options.vignetteExtent - How far inward it spreads (e.g., 0.2 - 0.5)
  */
 export function applyFullCRTEffect(imageData, { 
-    scanlineStrength = 0.03, 
-    vignetteStrength = 0.7, 
-    vignetteExtent = 0.25,
+    scanlineStrength = 0.02, 
+    vignetteStrength = 0.55, 
+    vignetteExtent = 0.2,
     boost = 1.25 
 } = {}) {
     const data = imageData.data;
