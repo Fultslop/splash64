@@ -93,5 +93,6 @@ export async function generateC64Config() {
     outputSpeed:   25,   // chars/sec — program output (ticker text)
     waitReady:     0.8,  // seconds to blink cursor at each READY prompt
     waitDone:      5.0,  // seconds to hold screen after ticker finishes
+    musicDelay:    0.0,  // seconds after ticker starts before music plays
   };
 }

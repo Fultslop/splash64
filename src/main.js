@@ -42,8 +42,9 @@ function createFpsCounter() {
   };
 }
 
-// Music player — off by default, click to toggle. Starts on first click (browser policy).
+// Music player — off by default, hidden until the ticker phase starts.
 // Config: { src, volume (0..1), visible (show the button at all) }
+// Returns { scheduleReveal(delaySecs) } — reveals the button after a delay; user must click to play.
 function createMusicPlayer({ src, volume = 0.5, visible = false } = {}) {
   const audio  = new Audio(src);
   audio.loop   = true;
@@ -53,15 +54,23 @@ function createMusicPlayer({ src, volume = 0.5, visible = false } = {}) {
   el.textContent = '\u266a off';
   el.style.cssText = 'position:fixed;top:8px;right:8px;font:bold 16px monospace;'
     + 'color:#666;background:rgba(0,0,0,.55);padding:4px 10px;cursor:pointer;'
-    + `z-index:9999;user-select:none;display:${visible ? 'block' : 'none'}`;
+    + 'z-index:9999;user-select:none;display:none';
   document.body.appendChild(el);
 
   let playing = false;
-  el.addEventListener('click', () => {
-    playing = !playing;
-    if (playing) { audio.play();  el.textContent = '\u266a on';  el.style.color = '#0f0'; }
-    else         { audio.pause(); el.textContent = '\u266a off'; el.style.color = '#666'; }
-  });
+
+  function play()  { playing = true;  audio.play();  el.textContent = '\u266a on';  el.style.color = '#0f0'; }
+  function pause() { playing = false; audio.pause(); el.textContent = '\u266a off'; el.style.color = '#666'; }
+
+  el.addEventListener('click', () => { playing ? pause() : play(); });
+
+  return {
+    // Reveal the button after delaySecs (user still has to click to play).
+    scheduleReveal(delaySecs) {
+      if (!visible) return;
+      setTimeout(() => { el.style.display = 'block'; }, delaySecs * 1000);
+    },
+  };
 }
 
 // Choose a demo name, never repeating the previous session's choice.
@@ -100,7 +109,7 @@ async function init() {
   const renderer  = initRenderer(canvas, C64_PALETTE, rw, rh);
   const { setUpdate } = startLoop(() => {});  // noop until first demo is ready
   const sampleFps = createFpsCounter();
-  createMusicPlayer({ src: './music/very-superbeep.mp3', volume: 0.5, visible: demoName === 'c64' });
+  const music = createMusicPlayer({ src: './music/very-superbeep.mp3', volume: 0.5, visible: demoName === 'c64' });
 
   if (demoName === 'c64') {
     renderer.setPalette(C64_PALETTE);
@@ -118,7 +127,8 @@ async function init() {
       const newBuffer = renderer.resize(RENDER_W, RENDER_H);
       startSunset(newBuffer, renderer.present, renderer.setPalette, setUpdate, sampleFps);
     };
-    const demo = createC64Demo(renderer.buffer, { charset, config, onComplete });
+    const onTickerStart = () => music.scheduleReveal(config.musicDelay ?? 0);
+    const demo = createC64Demo(renderer.buffer, { charset, config, onComplete, onTickerStart });
     setUpdate(dt => { sampleFps(dt); demo.update(dt); renderer.present(); });
 
   } else {

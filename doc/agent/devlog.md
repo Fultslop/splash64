@@ -100,6 +100,12 @@ Format:
 - Sampling only runs when visible: accumulates frame count + elapsed time, updates `textContent` every 500 ms (2 Hz). No cost at all when hidden — `sample(dt)` is an immediate return.
 - `sampleFps` passed through `startSunset` and `onComplete` so it survives the c64→sunset transition.
 
+**08/03/2026 Claude [FEAT]**: C64 demo — parallel attribution reveal + music button reveal on ticker start.
+- Attribution lines now reveal simultaneously: `attrTotal = Math.max(...lines.map(l => l.length))` so all lines animate at the same rate, each clamped independently to its own length.
+- Music button hidden at startup; `createMusicPlayer` returns `{ scheduleReveal(delaySecs) }` — shows the button after a delay (no autoplay; user must click to play).
+- `onTickerStart` callback passed into `createC64Demo`; fired in `doRunResponse` when the ticker phase begins; `main.js` uses it to call `scheduleReveal(config.musicDelay)`.
+- `musicDelay` config entry (seconds, default 0) controls when the button becomes visible after the ticker starts.
+
 **08/03/2026 Claude [FIX]**: font rasterizer rewrite — per-character rendering with explicit letter spacing.
 - Previous approach (whole string → one canvas) caused: canvas overflow for long strings (silent pixel corruption), no control over letter spacing, antialiasing threshold holes.
 - New approach in `font.js`: each character rasterized to its own canvas, placed manually with `letterSpacing` gap.

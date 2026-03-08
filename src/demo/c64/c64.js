@@ -19,7 +19,7 @@ const ATTR_SPEED = 25;   // chars/sec (matches text plotter speed)
 const ATTR_HOLD  = 5.0;  // seconds fully visible before dissolving
 const ATTR_GAP   = 1.0;  // seconds between messages
 
-export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
+export function createC64Demo(buffer, { charset, config, onComplete, onTickerStart } = {}) {
   const { width, height } = buffer;
   const { palette, coolSeq, bootLines, loadResponse, settleColors } = config;
 
@@ -131,13 +131,14 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
     tickerIdx   = 0;
     pushLine('');
     loadNextAttribution();
+    onTickerStart?.();
     setPhase('TYPING_TICKER');
   }
 
   function loadNextAttribution() {
     if (attrIdx >= attributions.length) { attrPhase = 'GONE'; return; }
     attrLines    = attributions[attrIdx++];
-    attrTotal    = attrLines.reduce((s, l) => s + l.length, 0);
+    attrTotal    = Math.max(...attrLines.map(l => l.length));  // parallel: max line length
     attrVisible  = 0;
     attrVanished = 0;
     attrAccum    = 0;
@@ -315,16 +316,14 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
       const borderH    = height - borderTopY;
       const baseY      = borderTopY + Math.floor((borderH - attrLines.length * charH) / 2);
 
-      let charOffset = 0;
       for (let i = 0; i < attrLines.length; i++) {
         const line   = attrLines[i];
-        const lStart = Math.max(attrVanished - charOffset, 0);
-        const lEnd   = Math.max(Math.min(attrVisible, charOffset + line.length) - charOffset, 0);
+        const lStart = Math.min(attrVanished, line.length);
+        const lEnd   = Math.min(attrVisible,  line.length);
         if (lEnd > lStart) {
           drawLine(buffer, 0, 0, line.slice(lStart, lEnd), palette.background, charset,
             width - line.length * charW + lStart * charW, baseY + i * charH);
         }
-        charOffset += line.length;
       }
     }
   }

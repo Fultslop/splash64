@@ -200,9 +200,15 @@ WAIT_DONE       → hold 5.0 s
 DONE            → call onComplete() → setPalette + setUpdate → sunset
 ```
 
-**Font attribution**: two right-aligned lines (`C64 FONT:` / `HTTPS://STYLE64.ORG/C64-TRUETYPE`) in the bottom border strip, drawn in P.BG (dark blue) against P.BORD (light blue). Own sub-state machine: `HIDDEN → APPEARING → VISIBLE → DISAPPEARING → GONE`. Triggered at `TYPING_TICKER` start; appears char-by-char at 25 ch/s, holds 5 s, dissolves left-to-right at the same speed. Slice math keeps each character right-aligned at its fixed position throughout the animation.
+**Attribution messages**: right-aligned text in the bottom border strip, driven by `src/demo/c64/attribution.json` — an array of messages, each an array of 1–N line strings. Sub-state machine: `HIDDEN → APPEARING → VISIBLE → DISAPPEARING → GAP → APPEARING → … → GONE`. Triggered at `TYPING_TICKER` start. Each message: all lines reveal in parallel char-by-char at 25 ch/s (each line clamped independently to its own length), hold for 5 s, dissolve left-to-right, 1 s gap, then next message. `attrTotal = Math.max(...lines.map(l => l.length))` — the longest line governs timing. Drawn in `palette.background` against the border colour.
 
-**Demo swap**: `c64.js` accepts an `onComplete` callback. `main.js` passes a closure that calls `renderer.resize(320, 200)` then `startSunset(newBuffer, ...)` — no page reload.
+**Music player** (`main.js`): DOM overlay (top-right), always hidden until revealed. `createMusicPlayer({src, volume, visible})` returns `{ scheduleReveal(delaySecs) }`. When `onTickerStart` fires in `doRunResponse`, `main.js` calls `scheduleReveal(config.musicDelay)` which shows the button after the configured delay. User must click to play — no autoplay. `musicDelay` in config (seconds, default 0).
+
+**Callbacks**: `c64.js` accepts `onComplete` and `onTickerStart`.
+- `onComplete`: called in `WAIT_DONE` phase end — triggers `renderer.resize(320,200)` + `startSunset`.
+- `onTickerStart`: called at start of `TYPING_TICKER` — used to reveal the music button.
+
+**Demo swap**: `main.js` passes `onComplete` closure that calls `renderer.resize(320, 200)` then `startSunset(newBuffer, ...)` — no page reload.
 
 ---
 
