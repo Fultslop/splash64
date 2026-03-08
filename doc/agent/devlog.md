@@ -70,6 +70,13 @@ Format:
 - `PixelBuffer.setPalette()`: swaps the active palette at runtime, enabling seamless c64→sunset transition without page reload.
 - `@font-face` for C64 Pro Mono declared in `index.html`; force-loaded in `main.js` via `document.fonts.load()` before `buildCharset` (local @font-face fonts aren't fetched by `document.fonts.ready` unless used in CSS).
 
+**08/03/2026 Claude [FEAT]**: C64 demo — authentic 384×272 buffer with real border area + terminal scroll.
+- `renderer.js`: `initRenderer` now accepts optional `w, h` params (default 320×200); returns `resize(w, h)` for mid-session buffer changes. `buffer` exposed as a getter so callers always see the current buffer after resize.
+- `main.js`: demo dimensions chosen before `initRenderer`; C64 gets 384×272, sunset 320×200. On c64→sunset transition, `renderer.resize(320, 200)` shrinks the buffer before handing off.
+- `c64.js`: removed hardcoded `BORDER` constant; `ACTIVE_W/H = 320×200`, `COLS=40`, `ROWS=25`. Active area centred in the buffer — border colour fills the surrounding region. Full 40-column text grid with authentic spacing.
+- `c64.js`: terminal scroll — when the screen is full during ticker output, `lines.shift()` scrolls all text up one row instead of stopping.
+- `config.js`: replaced `loadTickerText` (which collapsed all lines) with `loadPrinterText` — preserves source newlines, collapses runs of 2+ blanks to 1. Newlines in the text now cause real line breaks in the terminal output.
+
 **08/03/2026 Claude [FIX]**: font rasterizer rewrite — per-character rendering with explicit letter spacing.
 - Previous approach (whole string → one canvas) caused: canvas overflow for long strings (silent pixel corruption), no control over letter spacing, antialiasing threshold holes.
 - New approach in `font.js`: each character rasterized to its own canvas, placed manually with `letterSpacing` gap.

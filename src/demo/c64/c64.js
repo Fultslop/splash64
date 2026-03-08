@@ -14,8 +14,12 @@ const P = {
   TEXT:  14,  // Light Blue — all text
 };
 
-// Screen layout (pixels).
-const BORDER  = 4;   // px strip on each edge, filled with border colour
+// The C64 active display is 320×200 (40×25 chars). When the buffer is larger,
+// the active area is centred and the surrounding region shows the border colour.
+const ACTIVE_W = 320;
+const ACTIVE_H = 200;
+const COLS     = 40;
+const ROWS     = 25;
 
 // Boot screen text (authentic Commodore 64, then our READY prompt).
 const BOOT_LINES = [
@@ -39,11 +43,11 @@ const LOAD_RESPONSE = [
 export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
   const { width, height } = buffer;
 
-  // Text area origin and grid dimensions.
-  const ox    = BORDER;
-  const oy    = BORDER;
-  const cols  = Math.floor((width  - BORDER * 2) / charset.charW);
-  const rows  = Math.floor((height - BORDER * 2) / charset.charH);
+  // Centre the 320×200 active area in the buffer (border fills the rest).
+  const ox = Math.floor((width  - ACTIVE_W) / 2);
+  const oy = Math.floor((height - ACTIVE_H) / 2);
+  const cols = COLS;
+  const rows = ROWS;
   const { charW, charH } = charset;
 
   // --- State ---
@@ -129,8 +133,8 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
     const ch = tickerText[tickerIdx++];
 
     if (ch === '\n' || cursorCol >= cols) {
-      // Wrap to next row.
-      if (lines.length >= rows) return true; // screen full
+      // Scroll up when the screen is full, then add a new blank line at the bottom.
+      if (lines.length >= rows) lines.shift();
       pushLine('');
     }
 
@@ -219,14 +223,10 @@ export function createC64Demo(buffer, { charset, config, onComplete } = {}) {
   }
 
   function draw() {
-    // Background.
-    buffer.fillRect(0, 0, width, height, P.BG);
-
-    // Border strips.
-    buffer.fillRect(0,           0,          width,  BORDER, P.BORD);
-    buffer.fillRect(0,           height - BORDER, width,  BORDER, P.BORD);
-    buffer.fillRect(0,           0,          BORDER, height, P.BORD);
-    buffer.fillRect(width - BORDER, 0,       BORDER, height, P.BORD);
+    // Border area (fills everything outside the 320×200 active region).
+    buffer.fillRect(0, 0, width, height, P.BORD);
+    // Active display area.
+    buffer.fillRect(ox, oy, ACTIVE_W, ACTIVE_H, P.BG);
 
     // Text.
     for (let r = 0; r < lines.length && r < rows; r++) {

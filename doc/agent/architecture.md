@@ -10,18 +10,18 @@ A retro-style HTML5 demo/splash screen engine. Pure ES6+ modules, HTML5 Canvas, 
 ## Render Pipeline
 
 ```
-load page → await fonts.ready → [force-load C64 font if needed]
-         → chooseDemoName (localStorage no-repeat)
-         → initRenderer (neutral palette) → startLoop (noop)
+load page → await fonts.ready → chooseDemoName (localStorage no-repeat)
+         → initRenderer (w, h per demo) → startLoop (noop)
          → demo setup → setUpdate(demoUpdate) → running
 ```
 
 **Demo swap (c64 → sunset)**:
 ```
-c64 DONE phase → onComplete() → setPalette(sunsetPalette) → setUpdate(sunsetUpdate)
+c64 DONE phase → onComplete() → renderer.resize(320, 200) → new buffer
+              → setPalette(sunsetPalette) → setUpdate(sunsetUpdate)
 ```
 
-- **Render resolution**: 320×200 (retro, easily changed in `renderer.js`)
+- **Render resolution**: per-demo — C64: 384×272 (active area 320×200 + authentic border region); Sunset: 320×200. Configured in `main.js`.
 - **Display**: pixel-perfect letterbox scale-up to full window, no interpolation
 - **No canvas 2D primitives** used for scene drawing — everything goes through `PixelBuffer` to eliminate antialiasing
 
@@ -31,8 +31,9 @@ c64 DONE phase → onComplete() → setPalette(sunsetPalette) → setUpdate(suns
 
 ```
 index.html                      Shell: black bg, centered canvas, pixelated CSS; @font-face for C64 Pro Mono
-src/main.js                     Entry: demo selection, font loading, demo lifecycle, c64→sunset transition
-src/common/renderer.js          initRenderer(canvas, palette) → { buffer, present, setPalette }
+src/main.js                     Entry: demo selection, per-demo buffer sizing, font loading, c64→sunset transition
+src/common/renderer.js          initRenderer(canvas, palette, w=320, h=200) → { buffer (getter), present, setPalette, resize }
+                                resize(w, h) → new PixelBuffer — used for c64→sunset size change
                                 startLoop(update) → { setUpdate } — supports live update-fn swap
 src/common/pixelbuffer.js       PixelBuffer class — software rasterizer; setPalette() for runtime swap
 src/common/palette.js           SUNSET, CRIMSON, OCEAN (sunset variants) + C64_PALETTE + PALETTES array
@@ -43,7 +44,7 @@ src/demo/sunset/config.js       generateSunsetConfig(titleSprite) → config —
 src/demo/sunset/sunset.js       Sunset demo — reads layout from config, no randomisation inside
 src/demo/c64/charset.js         buildCharset(fontFamily, fontSize) → { sprites, charW, charH }
                                 drawChar / drawLine — grid-positioned glyph blitting
-src/demo/c64/config.js          generateC64Config() → config (async — fetches ticker text)
+src/demo/c64/config.js          generateC64Config() → config (async — uses loadPrinterText, preserves newlines)
 src/demo/c64/c64.js             C64 boot sequence demo — state machine, calls onComplete() when done
 ```
 
@@ -76,12 +77,13 @@ Central rendering abstraction. Backed by `ImageData` (Uint8ClampedArray RGBA).
 
 ## Renderer
 
-`initRenderer(displayCanvas, palette)` returns `{ buffer, present, width, height }`.
+`initRenderer(displayCanvas, palette, w=320, h=200)` returns `{ buffer (getter), present, setPalette, resize }`.
 
-- Creates a `PixelBuffer` at render resolution (320×200)
-- Creates an offscreen canvas at the same resolution
+- Creates a `PixelBuffer` at the given resolution and an offscreen canvas at the same size
 - `present()`: flushes buffer → offscreen, then `drawImage` scales up to display canvas
-- `applyScale()`: CSS letterbox scaling, recalculated on window resize
+- `applyScale()`: CSS letterbox scaling, recalculated on window resize — uses current `w, h` via closure, so it stays correct after `resize`
+- `resize(newW, newH)`: recreates offscreen canvas and `PixelBuffer`; returns the new buffer. All closures (`present`, `setPalette`) automatically use the new buffer.
+- `buffer` is a getter — always returns the current buffer, even after `resize`
 - `imageSmoothingEnabled = false` on all contexts
 
 `startLoop(update)`: rAF loop, calls `update(dt)` where `dt` is seconds since last frame.
@@ -123,8 +125,11 @@ Slot layout (must be preserved when adding new palettes):
 - Scrolling text: `buffer.blitSpriteScrolled(sprite, x, y, idx, scrollX, viewW)`
 
 **Ticker** (`src/common/ticker.js`):
-- `loadTickerText(url, startLine, endLine)`: `fetch` a text file, slice lines, join with ` · ` separator
+- `loadTickerText(url, startLine, endLine)`: `fetch` a text file, slice lines, strip blanks, join with ` · ` separator — used by sunset demo
 - `createTicker(sprite, speed)` → `{ update(dt), getScrollX(), sprite }`: advances scrollX at speed px/sec, wraps at `sprite.w`
+
+**C64 printer text** (`src/demo/c64/config.js`):
+- `loadPrinterText(url, startLine)`: fetches text preserving newlines; trims trailing whitespace per line; collapses runs of 2+ blank lines to 1. Used instead of `loadTickerText` so the C64 terminal output respects source line structure.
 
 Web fonts loaded via Google Fonts `<link>` in `index.html`.
 Current fonts: **Shojumaru** (title), **Press Start 2P** (ticker).
@@ -172,11 +177,11 @@ Commodore 64 boot sequence, then loads and runs "FULTSLOP", then transitions to 
 - 6: Blue (screen background)
 - 14: Light Blue (border strips + all text)
 
-**Character grid**: C64 Pro Mono at 8px. Grid dimensions computed from font metrics:
+**Buffer**: 384×272 — the authentic C64 total display area (active 320×200 + border region). The 320×200 text area is centred: `ox = (384-320)/2 = 32`, `oy = (272-200)/2 = 36`. Border colour fills the surrounding pixels; the active area is filled with the background colour on top.
+
+**Character grid**: C64 Pro Mono at 8px. Fixed constants: `COLS=40`, `ROWS=25`, `ACTIVE_W=320`, `ACTIVE_H=200`.
 - `charW = Math.round(measureText('M').width)` — exact monospace advance width
 - `charH = 8` (fontSize)
-- `BORDER = 4` px strips on all edges
-- `cols = floor((320 - 8) / charW)`, `rows = floor((200 - 8) / charH)`
 
 **Charset** (`charset.js`): glyphs rasterized with `fillText(ch, 0, 0)` — no x-offset — so ink starts at pixel (0,0) and columns align exactly. One canvas per glyph, clipped to `charW × charH`.
 
@@ -190,7 +195,7 @@ TYPING_LOAD     → type LOAD "FULTSLOP",8,1 at 10 chars/s
 LOAD_RESPONSE   → append SEARCHING / LOADING / READY. instantly
 WAIT_READY2     → blink cursor 0.8 s
 TYPING_RUN      → type RUN at 10 chars/s
-TYPING_TICKER   → plot devlog ticker text at 25 chars/s, wrapping at cols
+TYPING_TICKER   → plot devlog text at 25 chars/s; newlines cause line breaks; when screen full, scroll up one row
 WAIT_DONE       → hold 2.5 s
 DONE            → call onComplete() → setPalette + setUpdate → sunset
 ```

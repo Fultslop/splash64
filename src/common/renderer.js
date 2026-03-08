@@ -6,50 +6,64 @@ import { PixelBuffer } from './pixelbuffer.js';
 export const RENDER_W = 320;
 export const RENDER_H = 200;
 
-export function initRenderer(displayCanvas, palette) {
-  // The display canvas fills the window (sized via CSS, letterboxed).
+export function initRenderer(displayCanvas, palette, w = RENDER_W, h = RENDER_H) {
   const displayCtx = displayCanvas.getContext('2d');
   displayCtx.imageSmoothingEnabled = false;
 
-  // Offscreen canvas at render resolution — all drawing happens here.
-  const offscreen = document.createElement('canvas');
-  offscreen.width  = RENDER_W;
-  offscreen.height = RENDER_H;
-  const offCtx = offscreen.getContext('2d');
-  offCtx.imageSmoothingEnabled = false;
+  let rw = w, rh = h;
+  let offscreen = createOffscreen(rw, rh);
+  let _buffer   = new PixelBuffer(rw, rh, palette);
 
-  const buffer = new PixelBuffer(RENDER_W, RENDER_H, palette);
-
-  applyScale(displayCanvas);
-  window.addEventListener('resize', () => applyScale(displayCanvas));
+  applyScale(displayCanvas, rw, rh);
+  window.addEventListener('resize', () => applyScale(displayCanvas, rw, rh));
 
   function present() {
-    // 1. Flush pixel buffer to offscreen canvas.
-    buffer.flush(offCtx, RENDER_W, RENDER_H);
-    // 2. Scale offscreen up to display canvas (nearest-neighbour via CSS + drawImage).
-    const { dw, dh } = getScaledSize();
+    _buffer.flush(offscreen.getContext('2d'));
+    const { dw, dh } = getScaledSize(rw, rh);
     displayCanvas.width  = dw;
     displayCanvas.height = dh;
     displayCtx.imageSmoothingEnabled = false;
     displayCtx.drawImage(offscreen, 0, 0, dw, dh);
   }
 
-  return { buffer, present, width: RENDER_W, height: RENDER_H,
-           setPalette: p => buffer.setPalette(p) };
-}
+  // Resize the buffer (e.g. when transitioning between demos).
+  // Returns the new PixelBuffer.
+  function resize(newW, newH) {
+    rw = newW; rh = newH;
+    offscreen = createOffscreen(rw, rh);
+    _buffer   = new PixelBuffer(rw, rh, palette);
+    applyScale(displayCanvas, rw, rh);
+    return _buffer;
+  }
 
-function getScaledSize() {
-  const scaleX = window.innerWidth  / RENDER_W;
-  const scaleY = window.innerHeight / RENDER_H;
-  const scale  = Math.min(scaleX, scaleY);
   return {
-    dw: Math.floor(RENDER_W * scale),
-    dh: Math.floor(RENDER_H * scale),
+    get buffer() { return _buffer; },
+    present,
+    setPalette: p => _buffer.setPalette(p),
+    resize,
   };
 }
 
-function applyScale(canvas) {
-  const { dw, dh } = getScaledSize();
+function createOffscreen(w, h) {
+  const c = document.createElement('canvas');
+  c.width  = w;
+  c.height = h;
+  c.getContext('2d').imageSmoothingEnabled = false;
+  return c;
+}
+
+function getScaledSize(w, h) {
+  const scaleX = window.innerWidth  / w;
+  const scaleY = window.innerHeight / h;
+  const scale  = Math.min(scaleX, scaleY);
+  return {
+    dw: Math.floor(w * scale),
+    dh: Math.floor(h * scale),
+  };
+}
+
+function applyScale(canvas, w, h) {
+  const { dw, dh } = getScaledSize(w, h);
   canvas.style.width  = `${dw}px`;
   canvas.style.height = `${dh}px`;
 }
