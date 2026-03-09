@@ -9,7 +9,7 @@ import { generateC64Config, C64_W, C64_H } from './demo/c64/config.js';
 import { buildCharset }                   from './demo/c64/charset.js';
 import { createDriveDemo }               from './demo/drive/drive.js';
 import { generateDriveConfig }           from './demo/drive/config.js';
-import { loadSprite }                    from './common/loadSprite.js';
+import { loadSprite, classifyCarPixel, CAR_N_LAYERS } from './common/loadSprite.js';
 import { createLoadingScreen }            from './common/loading.js';
 import { wrapWithAutoFade }               from './common/fade.js';
 import { createFpsCounter }              from './common/ui/fps.js';
@@ -66,8 +66,14 @@ async function init() {
   await document.fonts.load('8px "C64 Pro Mono"');
   loading.setProgress(0.1);
 
-  // Load palm sprites once — reused across drive demo restarts.
-  const palmSprites = await loadSprite('./graphics/palm1.png');
+  // Load all palm variants + car once — reused across drive demo restarts.
+  const [palmVariants, carSprite] = await Promise.all([
+    Promise.all([
+      loadSprite('./graphics/palm1.png'),
+      loadSprite('./graphics/palm2.png'),
+    ]),
+    loadSprite('./graphics/car.png', classifyCarPixel, CAR_N_LAYERS),
+  ]);
 
   const canvas    = document.getElementById('screen');
   const demoName  = chooseDemoName();
@@ -105,7 +111,7 @@ async function init() {
       const config = Object.assign(generateDriveConfig(), DEMOS.drive ?? {});
       renderer.setPalette(config.palette);
       const titleSprite = rasterizeText('//  DRIVE 64  //', 'C64 Pro Mono', 16, 1, 1);
-      const demo = createDriveDemo(renderer.buffer, { config, titleSprite, palmSprites });
+      const demo = createDriveDemo(renderer.buffer, { config, titleSprite, palmVariants, carSprite });
       setUpdate(wrapWithAutoFade(
         dt => { sampleFps(dt); demo.update(dt); renderer.present(); },
         config.maxDisplayTime, config.fadeDuration, config.fadeInDuration,
@@ -147,7 +153,7 @@ async function init() {
     const config = Object.assign(generateDriveConfig(), DEMOS.drive ?? {});
     renderer.setPalette(config.palette);
     const titleSprite = rasterizeText('//  DRIVE 64  //', 'C64 Pro Mono', 16, 1, 1);
-    const demo = createDriveDemo(renderer.buffer, { config, titleSprite, palmSprites });
+    const demo = createDriveDemo(renderer.buffer, { config, titleSprite, palmVariants, carSprite });
     setUpdate(wrapWithAutoFade(
       dt => { sampleFps(dt); demo.update(dt); renderer.present(); },
       config.maxDisplayTime,

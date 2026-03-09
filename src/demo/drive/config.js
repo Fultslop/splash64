@@ -52,6 +52,9 @@ export function generateDriveConfig() {
       fogMax:    0.75,  // max fog blend at the horizon (0 = none, 1 = full haze)
     },
 
+    // Car sprite — scale to this pixel height (computed from PNG height at load time).
+    carTargetH: 38,
+
     maxDisplayTime: 30,
     fadeDuration:   2,
     fadeInDuration: 1.5,

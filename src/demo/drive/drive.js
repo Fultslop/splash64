@@ -44,7 +44,17 @@ const P = {
   PALM_LEAF_M:  18,
   PALM_LEAF_L:  19,
   UI_WHITE:     27,
+  // Car layers — palette slots 20–25.
+  CAR_SHADOW:   20,
+  CAR_BODY:     21,
+  CAR_INTERIOR: 22,
+  CAR_HELMET_Y: 23,
+  CAR_HELMET_P: 24,
+  CAR_DETAIL:   25,
 };
+
+// Color index for each car layer (indexed 0–5, matching classifyCarPixel order).
+const CAR_LAYER_COLORS = [20, 21, 22, 23, 24, 25];
 
 // Color index for each palm layer (indexed 0–6, matching loadSprite.js layer order).
 const PALM_LAYER_COLORS = [
@@ -62,16 +72,17 @@ function easeInOut(t) {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 }
 
-export function createDriveDemo(buffer, { config, titleSprite, palmSprites = null }) {
+export function createDriveDemo(buffer, { config, titleSprite, palmVariants = null, carSprite = null }) {
   const {
     horizonY, roadHalfWidth,
     stripeLen, grassLen, rumbleLen, rumbleWidth,
     curve: cv,
+    palm: { fogCutoff, fogMax },
   } = config;
 
-  // palmSprites is an array of 7 layers in drawing order (see loadSprite.js).
-  // Use the first layer as a size reference; null means no palms.
-  const palmRef = palmSprites?.[0] ?? null;
+  // palmVariants: array of sprite-sets, one per palm type (palm1, palm2, …).
+  // Each sprite-set is an array of 7 layers as returned by loadSprite.
+  const hasPalms = palmVariants && palmVariants.length > 0;
 
   let scrollZ = 0;
   const cx = Math.floor(W / 2);
@@ -148,16 +159,21 @@ export function createDriveDemo(buffer, { config, titleSprite, palmSprites = nul
 
   // --- Billboard system ---
   // Returns visible palm instances sorted back-to-front (largest z_rel first).
-  // Each entry: { z_rel, side } where z_rel is camera-relative world depth.
+  // Each entry: { z_rel, side, variant } — variant is a stable index into palmVariants,
+  // derived deterministically from (slot index, segment k) so the same world
+  // position always shows the same palm type with no per-frame randomness.
   function getVisibleBillboards() {
     const { period, slots, minZ, maxZ } = config.palm;
+    const nVariants = palmVariants ? palmVariants.length : 1;
     const results = [];
-    for (const slot of slots) {
+    for (let si = 0; si < slots.length; si++) {
+      const slot = slots[si];
       const lo = (scrollZ + minZ) / period - slot.phase;
       const hi = (scrollZ + maxZ) / period - slot.phase;
       for (let k = Math.ceil(lo); k <= Math.floor(hi); k++) {
-        const z_rel = (slot.phase + k) * period - scrollZ;
-        results.push({ z_rel, side: slot.side });
+        const z_rel   = (slot.phase + k) * period - scrollZ;
+        const variant = Math.abs(k * 7 + si * 3) % nVariants;
+        results.push({ z_rel, side: slot.side, variant });
       }
     }
     results.sort((a, b) => b.z_rel - a.z_rel);
@@ -213,52 +229,70 @@ export function createDriveDemo(buffer, { config, titleSprite, palmSprites = nul
 
       const roadColor   = roadStripe   ? P.ROAD_LIGHT  : P.ROAD_DARK;
       const grassColor  = get_grass_color(grassStripe, halfW);
-        
       const rumbleColor = rumbleStripe ? P.RUMBLE_WHITE : P.RUMBLE_RED;
+      const fogT        = fogMax * Math.max(0, 1 - perspective / fogCutoff);
 
       // Left grass
-      buffer.fillRect(0,             y, Math.max(0, left - rumbW),         1, grassColor);
+      buffer.fillRect(0,             y, Math.max(0, left - rumbW),         1, grassColor,  P.HAZE, fogT);
       // Left rumble strip
-      buffer.fillRect(left - rumbW,  y, rumbW,                             1, rumbleColor);
+      buffer.fillRect(left - rumbW,  y, rumbW,                             1, rumbleColor, P.HAZE, fogT);
       // Road surface
-      buffer.fillRect(left,          y, halfW * 2,                         1, roadColor);
+      buffer.fillRect(left,          y, halfW * 2,                         1, roadColor,   P.HAZE, fogT);
       // Right rumble strip
-      buffer.fillRect(right,         y, rumbW,                             1, rumbleColor);
+      buffer.fillRect(right,         y, rumbW,                             1, rumbleColor, P.HAZE, fogT);
       // Right grass
-      buffer.fillRect(right + rumbW, y, Math.max(0, W - right - rumbW),   1, grassColor);
+      buffer.fillRect(right + rumbW, y, Math.max(0, W - right - rumbW),   1, grassColor,  P.HAZE, fogT);
 
       // Center dashes — only when road is wide enough to show them.
       if (dashStripe && halfW > 8) {
         const dashW = Math.max(1, Math.round(halfW * 0.06));
-        buffer.fillRect(roadCX - Math.floor(dashW / 2), y, dashW, 1, P.CENTER_LINE);
+        buffer.fillRect(roadCX - Math.floor(dashW / 2), y, dashW, 1, P.CENTER_LINE, P.HAZE, fogT);
       }
     }
 
     // --- Billboards (palms) — back to front so near ones overdraw far ones ---
-    if (palmRef) {
-      const { minScale, fogCutoff, fogMax } = config.palm;
-      for (const { z_rel, side } of getVisibleBillboards()) {
+    if (hasPalms) {
+      const { minScale } = config.palm;
+      for (const { z_rel, side, variant } of getVisibleBillboards()) {
         const perspective = 1 / z_rel;
         if (perspective < minScale) continue;
+        const sprites = palmVariants[variant];
         const scale   = Math.min(1, perspective);
         // Fog: blend toward HAZE as palms recede.  Linear from fogCutoff (no fog)
         // down to 0 (full fogMax).  Pre-computed once, zero per-pixel overhead.
-        const fogT  = fogMax * Math.max(0, 1 - perspective / fogCutoff);
+        const fogT    = fogMax * Math.max(0, 1 - perspective / fogCutoff);
         const y       = Math.round(horizonY + perspective * (H - 1 - horizonY));
         const halfW   = Math.round(roadHalfWidth * perspective);
         const roadCX  = Math.round(cx + curveOffset * (1 - perspective) * (1 - perspective));
         const rumbW   = Math.max(1, Math.round(halfW * rumbleWidth));
-        const scaledW = Math.round(palmRef.w * scale);
-        const scaledH = Math.round(palmRef.h * scale);
+        // Use this variant's own dimensions (palms may differ in size).
+        const scaledW = Math.round(sprites[0].w * scale);
+        const scaledH = Math.round(sprites[0].h * scale);
         // Palm inner edge sits just outside the rumble strip.
         const palmX = side > 0
           ? roadCX + halfW + rumbW
           : roadCX - halfW - rumbW - scaledW;
         const palmY = y - scaledH;
-        for (let i = 0; i < palmSprites.length; i++) {
-          if (palmSprites[i].pixels.length > 0) {
-            buffer.blitScaled(palmSprites[i], palmX, palmY, scale, PALM_LAYER_COLORS[i], P.HAZE, fogT);
+        for (let i = 0; i < sprites.length; i++) {
+          if (sprites[i].pixels.length > 0) {
+            buffer.blitScaled(sprites[i], palmX, palmY, scale, PALM_LAYER_COLORS[i], P.HAZE, fogT);
           }
+        }
+      }
+    }
+
+    // --- Car ---
+    // Drawn after billboards so it always appears in front.
+    // Scaled to carTargetH pixels tall; lateral offset drifts to outside of curve.
+    if (carSprite) {
+      const carScale = config.carTargetH / carSprite[0].h;
+      const scaledW  = Math.round(carSprite[0].w * carScale);
+      const scaledH  = Math.round(carSprite[0].h * carScale);
+      const carX = Math.round(cx - scaledW / 2 - curveOffset * 0.10);
+      const carY = H - scaledH;
+      for (let i = 0; i < carSprite.length; i++) {
+        if (carSprite[i].pixels.length > 0) {
+          buffer.blitScaled(carSprite[i], carX, carY, carScale, CAR_LAYER_COLORS[i]);
         }
       }
     }

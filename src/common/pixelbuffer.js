@@ -36,10 +36,18 @@ export class PixelBuffer {
     this.data[i + 3] = 255;
   }
 
-  fillRect(x0, y0, w, h, idx) {
+  // fogIdx / fogT: optional distance fog — same semantics as blitScaled.
+  // Blend is pre-computed once before the loops; zero per-pixel overhead.
+  fillRect(x0, y0, w, h, idx, fogIdx = -1, fogT = 0) {
     const x1 = Math.min(x0 + w, this.width);
     const y1 = Math.min(y0 + h, this.height);
-    const [r, g, b] = this._rgb[idx];
+    let [r, g, b] = this._rgb[idx];
+    if (fogIdx >= 0 && fogT > 0) {
+      const [fr, fg, fb] = this._rgb[fogIdx];
+      r = (r + (fr - r) * fogT + 0.5) | 0;
+      g = (g + (fg - g) * fogT + 0.5) | 0;
+      b = (b + (fb - b) * fogT + 0.5) | 0;
+    }
     for (let y = Math.max(y0, 0); y < y1; y++) {
       for (let x = Math.max(x0, 0); x < x1; x++) {
         const i = (y * this.width + x) * 4;

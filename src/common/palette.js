@@ -193,9 +193,14 @@ export const DRIVE_PALETTE = [
   '#186008', // 17 palm leaf dark
   '#3a8010', // 18 palm leaf mid
   '#90d020', // 19 palm leaf light (bright lime)
-  // slots 20–26: unused, padded with black
-  '#000000','#000000','#000000','#000000',
-  '#000000','#000000','#000000',
+  // Car sprite layers (slots 20–25)
+  '#080608', // 20 car shadow / outline
+  '#cc1010', // 21 car body red
+  '#12101e', // 22 car interior / windshield dark
+  '#e8c820', // 23 car helmet yellow
+  '#7828b0', // 24 car helmet purple
+  '#d8d8d8', // 25 car detail white (tail lights, chrome)
+  '#000000', // 26 unused
   // UI — same positions as sunset palettes
   '#ffffff', // 27 white
   '#000000', // 28 black
