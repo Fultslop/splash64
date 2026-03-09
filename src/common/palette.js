@@ -228,21 +228,21 @@ export const DRIVE_DESERT = [
   '#906818', // 10 center-line (muted, config disables it anyway)
   '#c89030', // 11 sand avg
   '#cca038', // 12 sand avg-light
-  // Palm — dry, sparse, desert-adapted (warm browns, dead fronds)
-  '#100400', // 13 shadow
-  '#301000', // 14 trunk dark
-  '#7a3010', // 15 trunk mid (burnt orange-brown)
-  '#ac4c18', // 16 trunk light
-  '#181000', // 17 leaf dark (dried, near-black)
-  '#301c04', // 18 leaf mid (dark olive)
-  '#443008', // 19 leaf light (dry olive-brown)
-  // Car — same across all drive palettes
-  '#080608', // 20 car shadow
-  '#cc1010', // 21 car body red
-  '#12101e', // 22 car interior
-  '#e8c820', // 23 helmet yellow
-  '#7828b0', // 24 helmet purple
-  '#d8d8d8', // 25 car detail white
+  // Cactus billboard layers (replaces palms in desert variant)
+  '#080c06', // 13 shadow (near-black, green-tinted)
+  '#1a3410', // 14 body dark green
+  '#2e5820', // 15 body mid green
+  '#4a8030', // 16 body light green
+  '#502870', // 17 purple accent (barrel cactus highlights)
+  '#c8a020', // 18 yellow spines / flowers
+  '#70b840', // 19 bright highlight green
+  // Car — desert: sun-bleached, dusty, sand-coated
+  '#100a04', // 20 shadow (warm dark)
+  '#b83010', // 21 body (faded sun-bleached red)
+  '#181408', // 22 interior (warm dark)
+  '#c8a010', // 23 helmet yellow (faded, dusty)
+  '#603828', // 24 helmet purple → rust-brown (dust-covered)
+  '#c8b888', // 25 detail (sandy-beige chrome)
   '#000000', // 26 unused
   '#ffffff', '#000000', '#aaaaaa', '#ff3355', '#00ffcc', // 27-31 UI
 ];
@@ -273,8 +273,13 @@ export const DRIVE_NIGHT = [
   '#020408', // 17 leaf dark
   '#03060c', // 18 leaf mid
   '#050a12', // 19 leaf light
-  // Car
-  '#080608', '#cc1010', '#12101e', '#e8c820', '#7828b0', '#d8d8d8',
+  // Car — night: moonlit, dimmer, blue-white chrome from headlight glow
+  '#040406', // 20 shadow (near-black, cool)
+  '#8a0c0c', // 21 body (dark night red)
+  '#0c0c1c', // 22 interior (cool dark)
+  '#a08808', // 23 helmet yellow (dim)
+  '#401880', // 24 helmet purple (deep)
+  '#c8e0f8', // 25 detail (blue-white, moonlit chrome)
   '#000000',
   '#ffffff', '#000000', '#aaaaaa', '#ff3355', '#00ffcc',
 ];
@@ -305,8 +310,13 @@ export const DRIVE_SYNTHWAVE = [
   '#000830', // 17 leaf dark (deep indigo)
   '#001060', // 18 leaf mid
   '#001898', // 19 leaf light (electric blue)
-  // Car
-  '#080608', '#cc1010', '#12101e', '#e8c820', '#7828b0', '#d8d8d8',
+  // Car — synthwave: neon-soaked, hot red-magenta body, electric cyan chrome
+  '#060010', // 20 shadow (deep purple-black)
+  '#cc0048', // 21 body (hot red-magenta, neon-lit)
+  '#100020', // 22 interior (dark purple)
+  '#f0d000', // 23 helmet yellow (vivid, neon-saturated)
+  '#c010d8', // 24 helmet purple (electric)
+  '#00d8e8', // 25 detail (neon cyan chrome)
   '#000000',
   '#ffffff', '#000000', '#aaaaaa', '#ff3355', '#00ffcc',
 ];

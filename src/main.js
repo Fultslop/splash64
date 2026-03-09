@@ -9,7 +9,7 @@ import { generateC64Config, C64_W, C64_H } from './demo/c64/config.js';
 import { buildCharset }                   from './demo/c64/charset.js';
 import { createDriveDemo }               from './demo/drive/drive.js';
 import { generateDriveConfig }           from './demo/drive/config.js';
-import { loadSprite, loadSpriteQuantized } from './common/loadSprite.js';
+import { loadSprite, loadSpriteQuantized, classifyCactusPixel } from './common/loadSprite.js';
 import { DRIVE_PALETTE }                  from './common/palette.js';
 import { createLoadingScreen }            from './common/loading.js';
 import { wrapWithAutoFade }               from './common/fade.js';
@@ -73,13 +73,16 @@ async function init() {
   const spriteJobs = [
     loadSprite('./graphics/palm1.png'),
     loadSprite('./graphics/palm2.png'),
+    loadSprite('./graphics/cactus.png',  classifyCactusPixel),
+    loadSprite('./graphics/cactus2.png', classifyCactusPixel),
     loadSpriteQuantized('./graphics/car.png',      DRIVE_PALETTE),
     loadSpriteQuantized('./graphics/car-left.png', DRIVE_PALETTE),
   ];
   let spritesDone = 0;
   spriteJobs.forEach(p => p.then(() => spriteProgress(++spritesDone, spriteJobs.length)));
-  const [palm1, palm2, carSprite, carSpriteLeft] = await Promise.all(spriteJobs);
-  const palmVariants = [palm1, palm2];
+  const [palm1, palm2, cactus1, cactus2, carSprite, carSpriteLeft] = await Promise.all(spriteJobs);
+  const palmVariants   = [palm1, palm2];
+  const cactusVariants = [cactus1, cactus2];
 
   const canvas    = document.getElementById('screen');
   const demoName  = chooseDemoName();
@@ -117,7 +120,7 @@ async function init() {
       const config = Object.assign(generateDriveConfig(), DEMOS.drive ?? {});
       renderer.setPalette(config.palette);
       const titleSprite = rasterizeText('//  DRIVE 64  //', 'C64 Pro Mono', 16, 1, 1);
-      const demo = createDriveDemo(renderer.buffer, { config, titleSprite, palmVariants, carSprite, carSpriteLeft });
+      const demo = createDriveDemo(renderer.buffer, { config, titleSprite, palmVariants, cactusVariants, carSprite, carSpriteLeft });
       setUpdate(wrapWithAutoFade(
         dt => { sampleFps(dt); demo.update(dt); renderer.present(); },
         config.maxDisplayTime, config.fadeDuration, config.fadeInDuration,
@@ -159,7 +162,7 @@ async function init() {
     const config = Object.assign(generateDriveConfig(), DEMOS.drive ?? {});
     renderer.setPalette(config.palette);
     const titleSprite = rasterizeText('//  DRIVE 64  //', 'C64 Pro Mono', 16, 1, 1);
-    const demo = createDriveDemo(renderer.buffer, { config, titleSprite, palmVariants, carSprite, carSpriteLeft });
+    const demo = createDriveDemo(renderer.buffer, { config, titleSprite, palmVariants, cactusVariants, carSprite, carSpriteLeft });
     setUpdate(wrapWithAutoFade(
       dt => { sampleFps(dt); demo.update(dt); renderer.present(); },
       config.maxDisplayTime,

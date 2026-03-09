@@ -62,7 +62,7 @@ function easeInOut(t) {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 }
 
-export function createDriveDemo(buffer, { config, titleSprite, palmVariants = null, carSprite = null, carSpriteLeft = null }) {
+export function createDriveDemo(buffer, { config, titleSprite, palmVariants = null, cactusVariants = null, carSprite = null, carSpriteLeft = null }) {
   const {
     horizonY, roadHalfWidth,
     stripeLen, grassLen, rumbleLen, rumbleWidth,
@@ -71,9 +71,9 @@ export function createDriveDemo(buffer, { config, titleSprite, palmVariants = nu
     palm: { fogCutoff, fogMax },
   } = config;
 
-  // palmVariants: array of sprite-sets, one per palm type (palm1, palm2, …).
-  // Each sprite-set is an array of 7 layers as returned by loadSprite.
-  const hasPalms = palmVariants && palmVariants.length > 0;
+  // Desert variant uses cacti instead of palms; all other variants use palms.
+  const billboardVariants = config.variant === 'desert' ? cactusVariants : palmVariants;
+  const hasPalms = billboardVariants && billboardVariants.length > 0;
 
   let scrollZ = 0;
   const cx = Math.floor(W / 2);
@@ -89,6 +89,24 @@ export function createDriveDemo(buffer, { config, titleSprite, palmVariants = nu
   // Title centred horizontally, near the top of the sky.
   const titleX = Math.floor((W - titleSprite.w) / 2);
   const titleY = 8;
+
+  // Stars — generated once, drawn each frame on top of the sky gradient.
+  // Synthwave gets two colours (white + neon cyan); night gets plain white.
+  const hasStars = config.variant === 'night' || config.variant === 'synthwave';
+  const stars = (() => {
+    if (!hasStars) return [];
+    const out = [];
+    const count = 85 + Math.floor(Math.random() * 30); // 85–114 stars per session
+    for (let i = 0; i < count; i++) {
+      out.push({
+        x:   Math.floor(Math.random() * W),
+        y:   Math.floor(Math.random() * (horizonY - 4)),
+        // synthwave: ~1/3 of stars are neon cyan (slot 9 = '#00c8c8' in that palette)
+        idx: config.variant === 'synthwave' && Math.random() < 0.33 ? P.RUMBLE_WHITE : P.UI_WHITE,
+      });
+    }
+    return out;
+  })();
 
   // --- Curve state machine ---
   // States: STRAIGHT → CURVING_OUT → HOLDING → CURVING_IN → STRAIGHT → …
@@ -149,24 +167,36 @@ export function createDriveDemo(buffer, { config, titleSprite, palmVariants = nu
   }
 
   // --- Billboard system ---
-  // Returns visible palm instances sorted back-to-front (largest z_rel first).
-  // Each entry: { z_rel, side, variant } — variant is a stable index into palmVariants,
-  // derived deterministically from (slot index, segment k) so the same world
-  // position always shows the same palm type with no per-frame randomness.
+  // Returns visible billboard instances sorted back-to-front (largest z_rel first).
+  // variant is stable (deterministic hash of position).
+  // flipX is assigned randomly when a billboard first enters the far draw range,
+  // held constant while visible, then evicted from the map when it exits.
+  const billboardFlips = new Map(); // key: si*1000+k → boolean
   function getVisibleBillboards() {
     const { period, slots, minZ, maxZ } = config.palm;
-    const nVariants = palmVariants ? palmVariants.length : 1;
-    const results = [];
+    const nVariants = billboardVariants ? billboardVariants.length : 1;
+    const results   = [];
+    const alive     = new Set();
+
     for (let si = 0; si < slots.length; si++) {
       const slot = slots[si];
       const lo = (scrollZ + minZ) / period - slot.phase;
       const hi = (scrollZ + maxZ) / period - slot.phase;
       for (let k = Math.ceil(lo); k <= Math.floor(hi); k++) {
+        const key = si * 1000 + k;
+        alive.add(key);
+        if (!billboardFlips.has(key)) billboardFlips.set(key, Math.random() < 0.5);
         const z_rel   = (slot.phase + k) * period - scrollZ;
         const variant = Math.abs(k * 7 + si * 3) % nVariants;
-        results.push({ z_rel, side: slot.side, variant });
+        results.push({ z_rel, side: slot.side, xGap: slot.xGap || 0, variant, flipX: billboardFlips.get(key) });
       }
     }
+
+    // Evict entries that left the draw range this frame.
+    for (const key of billboardFlips.keys()) {
+      if (!alive.has(key)) billboardFlips.delete(key);
+    }
+
     results.sort((a, b) => b.z_rel - a.z_rel);
     return results;
   }
@@ -189,6 +219,11 @@ export function createDriveDemo(buffer, { config, titleSprite, palmVariants = nu
 
     // --- Sky ---
     buffer.fillGradientDithered(skyStops, 10);
+
+    // --- Stars (night / synthwave only) ---
+    for (const { x, y, idx } of stars) {
+      buffer.fillRect(x, y, 1, 1, idx);
+    }
 
     // Horizon anchor — a fixed full-width strip at the sky/road boundary.
     // It never shifts with curveOffset, so the viewer perceives the horizon as
@@ -244,10 +279,10 @@ export function createDriveDemo(buffer, { config, titleSprite, palmVariants = nu
     // --- Billboards (palms) — back to front so near ones overdraw far ones ---
     if (hasPalms) {
       const { minScale } = config.palm;
-      for (const { z_rel, side, variant } of getVisibleBillboards()) {
+      for (const { z_rel, side, xGap, variant, flipX } of getVisibleBillboards()) {
         const perspective = 1 / z_rel;
         if (perspective < minScale) continue;
-        const sprites = palmVariants[variant];
+        const sprites = billboardVariants[variant];
         const scale   = Math.min(1, perspective);
         // Fog: blend toward HAZE as palms recede.  Linear from fogCutoff (no fog)
         // down to 0 (full fogMax).  Pre-computed once, zero per-pixel overhead.
@@ -259,14 +294,15 @@ export function createDriveDemo(buffer, { config, titleSprite, palmVariants = nu
         // Use this variant's own dimensions (palms may differ in size).
         const scaledW = Math.round(sprites[0].w * scale);
         const scaledH = Math.round(sprites[0].h * scale);
-        // Palm inner edge sits just outside the rumble strip.
+        // Palm inner edge sits just outside the rumble strip; xGap pushes background rows further out.
+        const xGapPx = Math.round(xGap * scaledW);
         const palmX = side > 0
-          ? roadCX + halfW + rumbW
-          : roadCX - halfW - rumbW - scaledW;
+          ? roadCX + halfW + rumbW + xGapPx
+          : roadCX - halfW - rumbW - scaledW - xGapPx;
         const palmY = y - scaledH;
         for (let i = 0; i < sprites.length; i++) {
           if (sprites[i].pixels.length > 0) {
-            buffer.blitScaled(sprites[i], palmX, palmY, scale, PALM_LAYER_COLORS[i], P.HAZE, fogT);
+            buffer.blitScaled(sprites[i], palmX, palmY, scale, PALM_LAYER_COLORS[i], P.HAZE, fogT, flipX);
           }
         }
       }

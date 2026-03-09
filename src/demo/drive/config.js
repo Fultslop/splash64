@@ -40,7 +40,13 @@ function generateDaytimeConfig() {
     curve: baseCurve(),
     palm: {
       period:    5.0,
-      slots: [{ phase: 0.10, side: -1 }, { phase: 0.55, side: 1 }, { phase: 0.82, side: -1 }],
+      slots: [
+        { phase: 0.10, side: -1 },
+        { phase: 0.55, side:  1 },
+        { phase: 0.82, side: -1 },
+        { phase: 0.32, side:  1, xGap: 1.5 },
+        { phase: 0.65, side: -1, xGap: 1.5 },
+      ],
       minZ:      0.8,
       maxZ:      18.0,
       minScale:  0.05,
@@ -69,7 +75,12 @@ function generateDesertConfig() {
     curve: baseCurve(),
     palm: {
       period:    7.0,      // sparser — vegetation reduced
-      slots: [{ phase: 0.15, side: -1 }, { phase: 0.70, side: 1 }],  // only two per group
+      slots: [
+        { phase: 0.15, side: -1 },
+        { phase: 0.70, side:  1 },
+        { phase: 0.45, side:  1, xGap: 1.5 },
+        { phase: 0.90, side: -1, xGap: 1.5 },
+      ],  // only two per group
       minZ:      0.8,
       maxZ:      18.0,
       minScale:  0.05,
@@ -98,7 +109,13 @@ function generateNightConfig() {
     curve: baseCurve(),
     palm: {
       period:    5.0,
-      slots: [{ phase: 0.10, side: -1 }, { phase: 0.55, side: 1 }, { phase: 0.82, side: -1 }],
+      slots: [
+        { phase: 0.10, side: -1 },
+        { phase: 0.55, side:  1 },
+        { phase: 0.82, side: -1 },
+        { phase: 0.32, side:  1, xGap: 1.5 },
+        { phase: 0.65, side: -1, xGap: 1.5 },
+      ],
       minZ:      0.8,
       maxZ:      18.0,
       minScale:  0.05,
@@ -127,7 +144,13 @@ function generateSynthwaveConfig() {
     curve: baseCurve(),
     palm: {
       period:    4.5,      // denser — electric boulevard
-      slots: [{ phase: 0.10, side: -1 }, { phase: 0.55, side: 1 }, { phase: 0.82, side: -1 }],
+      slots: [
+        { phase: 0.10, side: -1 },
+        { phase: 0.55, side:  1 },
+        { phase: 0.82, side: -1 },
+        { phase: 0.32, side:  1, xGap: 1.5 },
+        { phase: 0.65, side: -1, xGap: 1.5 },
+      ],
       minZ:      0.8,
       maxZ:      18.0,
       minScale:  0.05,
@@ -149,10 +172,11 @@ const VARIANTS = [
 ];
 
 // Randomly picks a drive variant each time, never repeating back-to-back.
-let lastVariantIdx = -1;
+// Persisted in localStorage so refreshing the page also rotates the variant.
 export function generateDriveConfig() {
+  const last = parseInt(localStorage.getItem('lastDriveVariant') ?? '-1', 10);
   let idx;
-  do { idx = Math.floor(Math.random() * VARIANTS.length); } while (idx === lastVariantIdx);
-  lastVariantIdx = idx;
+  do { idx = Math.floor(Math.random() * VARIANTS.length); } while (idx === last);
+  localStorage.setItem('lastDriveVariant', idx);
   return VARIANTS[idx]();
 }
