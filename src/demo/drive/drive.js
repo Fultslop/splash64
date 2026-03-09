@@ -66,6 +66,7 @@ export function createDriveDemo(buffer, { config, titleSprite, palmVariants = nu
   const {
     horizonY, roadHalfWidth,
     stripeLen, grassLen, rumbleLen, rumbleWidth,
+    showCenterLine = true,
     curve: cv,
     palm: { fogCutoff, fogMax },
   } = config;
@@ -215,7 +216,7 @@ export function createDriveDemo(buffer, { config, titleSprite, palmVariants = nu
       const halfW  = Math.round(roadHalfWidth * perspective);
       const left   = roadCX - halfW;
       const right  = roadCX + halfW;
-      const rumbW  = Math.max(1, Math.round(halfW * rumbleWidth));
+      const rumbW  = Math.max(0, Math.round(halfW * rumbleWidth));
 
       const roadColor   = roadStripe   ? P.ROAD_LIGHT  : P.ROAD_DARK;
       const grassColor  = get_grass_color(grassStripe, halfW);
@@ -233,8 +234,8 @@ export function createDriveDemo(buffer, { config, titleSprite, palmVariants = nu
       // Right grass
       buffer.fillRect(right + rumbW, y, Math.max(0, W - right - rumbW),   1, grassColor,  P.HAZE, fogT);
 
-      // Center dashes — only when road is wide enough to show them.
-      if (dashStripe && halfW > 8) {
+      // Center dashes — only when road is wide enough and variant enables them.
+      if (showCenterLine && dashStripe && halfW > 8) {
         const dashW = Math.max(1, Math.round(halfW * 0.06));
         buffer.fillRect(roadCX - Math.floor(dashW / 2), y, dashW, 1, P.CENTER_LINE, P.HAZE, fogT);
       }

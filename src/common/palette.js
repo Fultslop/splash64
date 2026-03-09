@@ -209,5 +209,107 @@ export const DRIVE_PALETTE = [
   '#00ffcc', // 31 cyan accent
 ];
 
+// Desert / off-road palette — scorched earth, heat haze, sparse dry palms.
+// Rumble slots (8-9) intentionally match ground to make strips invisible.
+export const DRIVE_DESERT = [
+  // Sky — baked rust through pale sandy haze
+  '#120800', // 0  near-black scorched sky
+  '#3a1400', // 1  deep rust
+  '#7a3e10', // 2  amber-brown
+  '#c87c38', // 3  pale sandy horizon haze
+  // Road — warm asphalt + sand-gravel stripe
+  '#1c1810', // 4  road dark (warm asphalt)
+  '#b08838', // 5  road light (sand/gravel texture)
+  // Ground — desert sand
+  '#c08820', // 6  sand dark
+  '#d4a838', // 7  sand light
+  '#c08820', // 8  "rumble red"  = sand dark (invisible, no rumble on dirt)
+  '#d4a838', // 9  "rumble white" = sand light (invisible)
+  '#906818', // 10 center-line (muted, config disables it anyway)
+  '#c89030', // 11 sand avg
+  '#cca038', // 12 sand avg-light
+  // Palm — dry, sparse, desert-adapted (warm browns, dead fronds)
+  '#100400', // 13 shadow
+  '#301000', // 14 trunk dark
+  '#7a3010', // 15 trunk mid (burnt orange-brown)
+  '#ac4c18', // 16 trunk light
+  '#181000', // 17 leaf dark (dried, near-black)
+  '#301c04', // 18 leaf mid (dark olive)
+  '#443008', // 19 leaf light (dry olive-brown)
+  // Car — same across all drive palettes
+  '#080608', // 20 car shadow
+  '#cc1010', // 21 car body red
+  '#12101e', // 22 car interior
+  '#e8c820', // 23 helmet yellow
+  '#7828b0', // 24 helmet purple
+  '#d8d8d8', // 25 car detail white
+  '#000000', // 26 unused
+  '#ffffff', '#000000', '#aaaaaa', '#ff3355', '#00ffcc', // 27-31 UI
+];
+
+// Night drive palette — deep navy sky, dark asphalt, heavy fog, palm silhouettes.
+export const DRIVE_NIGHT = [
+  // Sky — near-black through deep blue-purple
+  '#000210', // 0  midnight black
+  '#000a22', // 1  deep navy
+  '#001a40', // 2  midnight blue
+  '#0a2c68', // 3  blue-purple horizon haze
+  // Road — dark asphalt, barely-visible stripe
+  '#121520', // 4  road dark
+  '#1c2034', // 5  road light (subtle cool blue-grey)
+  // Ground — near-black with blue tint
+  '#040810', // 6  ground dark
+  '#07101c', // 7  ground light
+  '#601010', // 8  rumble red (faint, like distant brake lights)
+  '#182038', // 9  rumble white (dim moonlit blue)
+  '#28260a', // 10 center-line (faded old paint, dim amber)
+  '#050c18', // 11 ground avg
+  '#060e1c', // 12 ground avg-light
+  // Palm — dark silhouettes against night sky
+  '#020204', // 13 shadow
+  '#07050a', // 14 trunk dark
+  '#100c10', // 15 trunk mid
+  '#181218', // 16 trunk light
+  '#020408', // 17 leaf dark
+  '#03060c', // 18 leaf mid
+  '#050a12', // 19 leaf light
+  // Car
+  '#080608', '#cc1010', '#12101e', '#e8c820', '#7828b0', '#d8d8d8',
+  '#000000',
+  '#ffffff', '#000000', '#aaaaaa', '#ff3355', '#00ffcc',
+];
+
+// Synthwave palette — deep indigo sky, neon rumble, electric palm silhouettes.
+export const DRIVE_SYNTHWAVE = [
+  // Sky — deep indigo to vivid violet
+  '#04000f', // 0  near-black indigo
+  '#0e0038', // 1  deep purple
+  '#2c0070', // 2  electric purple
+  '#6000c8', // 3  vivid violet horizon haze
+  // Road — near-black with dark purple stripe
+  '#070710', // 4  road dark
+  '#180848', // 5  road light (dark neon purple)
+  // Ground — near-black purple
+  '#03000c', // 6  ground dark
+  '#06001c', // 7  ground light
+  '#c80080', // 8  rumble = hot magenta
+  '#00c8c8', // 9  rumble = electric cyan
+  '#c000c0', // 10 center-line = magenta
+  '#050018', // 11 ground avg
+  '#07001e', // 12 ground avg-light
+  // Palm — neon purple silhouettes
+  '#030014', // 13 shadow
+  '#180030', // 14 trunk dark (deep purple)
+  '#3c005c', // 15 trunk mid
+  '#6800a0', // 16 trunk light (bright purple)
+  '#000830', // 17 leaf dark (deep indigo)
+  '#001060', // 18 leaf mid
+  '#001898', // 19 leaf light (electric blue)
+  // Car
+  '#080608', '#cc1010', '#12101e', '#e8c820', '#7828b0', '#d8d8d8',
+  '#000000',
+  '#ffffff', '#000000', '#aaaaaa', '#ff3355', '#00ffcc',
+];
+
 // All available palettes — one is chosen at random on startup.
 export const PALETTES = [SUNSET, CRIMSON, OCEAN];

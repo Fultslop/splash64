@@ -1,7 +1,6 @@
-import { DRIVE_PALETTE } from '../../common/palette.js';
+import { DRIVE_PALETTE, DRIVE_DESERT, DRIVE_NIGHT, DRIVE_SYNTHWAVE } from '../../common/palette.js';
 
 // Named curve intensities — pixel offset of the road centre at the horizon.
-// Positive = right, negative = left.  Used as the values in curve.intensities.
 export const CURVE = {
   EXTREME_LEFT:  -150,
   LEFT:          -50,
@@ -9,54 +8,151 @@ export const CURVE = {
   EXTREME_RIGHT:  150,
 };
 
-export function generateDriveConfig() {
-  // Slight speed variation per session — keeps each run feeling slightly different.
-  const speed = 5.08 + Math.random() * 1.38;  // 1.08 – 1.46 world-units/sec
-
+// Shared curve state-machine — same feel across all variants.
+function baseCurve() {
   return {
-    palette:       DRIVE_PALETTE,
-    speed,
-    horizonY:      130,   // screen Y of horizon line (50% down the 200px screen)
-    roadHalfWidth: 120,   // road half-width in pixels at the very bottom
-    stripeLen:     0.50,  // world-space length of each road zebra stripe
-    grassLen:      0.50,  // world-space length of grass colour bands
-    rumbleLen:     0.15,  // world-space length of rumble alternation
-    rumbleWidth:   0.08,  // rumble strip width as fraction of half-road width
-
-    // Curve state-machine config.
-    // All durations in seconds; intensities are signed horizon-pixel offsets.
-    curve: {
-      intensities:    [CURVE.EXTREME_LEFT, CURVE.LEFT, CURVE.RIGHT, CURVE.EXTREME_RIGHT],
-      straightBase:   1,    // minimum seconds of straight road between curves
-      straightRange:  1,    // + random(0..straightRange) seconds
-      transitionBase: 1.2,  // minimum seconds to ease into a curve
-      transitionRange: 1.0,
-      holdBase:       1.5,  // minimum seconds to hold a curve before returning
-      holdRange:      1.0,
-      returnBase:     1.2,  // minimum seconds to ease back to straight
-      returnRange:    0.5,
-    },
-
-    // Billboard / palm tree config.
-    palm: {
-      period:   5.0,   // world-units between billboard groups
-      slots: [         // phase (0–1 within period) + side (-1 = left, 1 = right)
-        { phase: 0.10, side: -1 },
-        { phase: 0.55, side:  1 },
-        { phase: 0.82, side: -1 },
-      ],
-      minZ:      0.8,   // don't draw closer than this
-      maxZ:     18.0,   // cull beyond this distance
-      minScale:  0.05,  // skip render below this fraction of full size
-      fogCutoff: 0.35,  // perspective value below which fog starts (worldZ > ~2.9)
-      fogMax:    0.75,  // max fog blend at the horizon (0 = none, 1 = full haze)
-    },
-
-    // Car sprite — scale to this pixel height (computed from PNG height at load time).
-    carTargetH: 38,
-
-    maxDisplayTime: 30,
-    fadeDuration:   2,
-    fadeInDuration: 1.5,
+    intensities:     [CURVE.EXTREME_LEFT, CURVE.LEFT, CURVE.RIGHT, CURVE.EXTREME_RIGHT],
+    straightBase:    1,
+    straightRange:   1,
+    transitionBase:  1.2,
+    transitionRange: 1.0,
+    holdBase:        1.5,
+    holdRange:       1.0,
+    returnBase:      1.2,
+    returnRange:     0.5,
   };
+}
+
+// --- Variant generators ---
+
+function generateDaytimeConfig() {
+  return {
+    variant:       'daytime',
+    palette:       DRIVE_PALETTE,
+    speed:         5.08 + Math.random() * 1.38,
+    horizonY:      130,
+    roadHalfWidth: 120,
+    stripeLen:     0.50,
+    grassLen:      0.50,
+    rumbleLen:     0.15,
+    rumbleWidth:   0.08,
+    showCenterLine: true,
+    curve: baseCurve(),
+    palm: {
+      period:    5.0,
+      slots: [{ phase: 0.10, side: -1 }, { phase: 0.55, side: 1 }, { phase: 0.82, side: -1 }],
+      minZ:      0.8,
+      maxZ:      18.0,
+      minScale:  0.05,
+      fogCutoff: 0.35,
+      fogMax:    0.75,
+    },
+    carTargetH:      38,
+    maxDisplayTime:  30,
+    fadeDuration:    2,
+    fadeInDuration:  1.5,
+  };
+}
+
+function generateDesertConfig() {
+  return {
+    variant:       'desert',
+    palette:       DRIVE_DESERT,
+    speed:         5.80 + Math.random() * 1.80,  // faster — open road, scorching heat
+    horizonY:      130,
+    roadHalfWidth: 120,
+    stripeLen:     0.60,   // longer stripes look more like dirt-road tyre ruts
+    grassLen:      0.80,   // wide sand dunes, slow colour bands
+    rumbleLen:     0.15,
+    rumbleWidth:   0.08,   // colours match ground in palette → invisible
+    showCenterLine: false, // dirt road, no markings
+    curve: baseCurve(),
+    palm: {
+      period:    7.0,      // sparser — vegetation reduced
+      slots: [{ phase: 0.15, side: -1 }, { phase: 0.70, side: 1 }],  // only two per group
+      minZ:      0.8,
+      maxZ:      18.0,
+      minScale:  0.05,
+      fogCutoff: 0.42,     // heat haze kicks in closer
+      fogMax:    0.88,     // heavy shimmer
+    },
+    carTargetH:      38,
+    maxDisplayTime:  30,
+    fadeDuration:    2,
+    fadeInDuration:  1.5,
+  };
+}
+
+function generateNightConfig() {
+  return {
+    variant:       'night',
+    palette:       DRIVE_NIGHT,
+    speed:         4.20 + Math.random() * 1.00,  // slower — careful at night
+    horizonY:      130,
+    roadHalfWidth: 120,
+    stripeLen:     0.50,
+    grassLen:      0.50,
+    rumbleLen:     0.15,
+    rumbleWidth:   0.08,
+    showCenterLine: true,
+    curve: baseCurve(),
+    palm: {
+      period:    5.0,
+      slots: [{ phase: 0.10, side: -1 }, { phase: 0.55, side: 1 }, { phase: 0.82, side: -1 }],
+      minZ:      0.8,
+      maxZ:      18.0,
+      minScale:  0.05,
+      fogCutoff: 0.22,     // night cuts visibility short
+      fogMax:    0.92,     // nearly black at the horizon
+    },
+    carTargetH:      38,
+    maxDisplayTime:  30,
+    fadeDuration:    2,
+    fadeInDuration:  1.5,
+  };
+}
+
+function generateSynthwaveConfig() {
+  return {
+    variant:       'synthwave',
+    palette:       DRIVE_SYNTHWAVE,
+    speed:         6.50 + Math.random() * 2.00,  // fast — neon blur
+    horizonY:      130,
+    roadHalfWidth: 120,
+    stripeLen:     0.40,   // tighter stripes = more kinetic feel
+    grassLen:      0.40,
+    rumbleLen:     0.12,
+    rumbleWidth:   0.10,   // slightly chunkier neon rumble
+    showCenterLine: true,
+    curve: baseCurve(),
+    palm: {
+      period:    4.5,      // denser — electric boulevard
+      slots: [{ phase: 0.10, side: -1 }, { phase: 0.55, side: 1 }, { phase: 0.82, side: -1 }],
+      minZ:      0.8,
+      maxZ:      18.0,
+      minScale:  0.05,
+      fogCutoff: 0.38,
+      fogMax:    0.80,
+    },
+    carTargetH:      38,
+    maxDisplayTime:  30,
+    fadeDuration:    2,
+    fadeInDuration:  1.5,
+  };
+}
+
+const VARIANTS = [
+  generateDaytimeConfig,
+  generateDesertConfig,
+  generateNightConfig,
+  generateSynthwaveConfig,
+];
+
+// Randomly picks a drive variant each time, never repeating back-to-back.
+let lastVariantIdx = -1;
+export function generateDriveConfig() {
+  let idx;
+  do { idx = Math.floor(Math.random() * VARIANTS.length); } while (idx === lastVariantIdx);
+  lastVariantIdx = idx;
+  return VARIANTS[idx]();
 }
