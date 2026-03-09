@@ -11,7 +11,7 @@
 //   { drive: { speed: 0.5 } }     — always run drive, override speed
 //   { c64: {}, sunset: {}, drive: {} }  — full rotation (default)
 export const DEMOS = {
-  c64:    {},
-  sunset: {},
+  //c64:    {},
+  //sunset: {},
   drive:  {},
 };

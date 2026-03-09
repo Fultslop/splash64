@@ -25,6 +25,26 @@
 
 export const PALM_N_LAYERS = 7;
 
+// Cactus sprite classifier — same 7-layer scheme as palms.
+// Layer order:
+//   0  shadow / outline  near-black
+//   1  body dark green
+//   2  body mid green
+//   3  body light green
+//   4  purple/violet accent  (barrel cactus highlights)
+//   5  yellow spines / flowers
+//   6  bright highlight green
+export function classifyCactusPixel(r, g, b) {
+  const lum = (r * 299 + g * 587 + b * 114) / (1000 * 255);
+  if (lum < 0.08)                                     return 0; // shadow
+  if (r > 140 && g > 100 && b < 90)                  return 5; // yellow flowers/spines
+  if (b > 100 && r > 70 && g < b * 0.85)             return 4; // purple/violet accent
+  if (g > r * 1.05) {
+    return lum >= 0.42 ? 6 : lum >= 0.22 ? 3 : lum >= 0.12 ? 2 : 1;
+  }
+  return lum > 0.55 ? 6 : 1;                                    // fallback
+}
+
 export function classifyPalmPixel(r, g, b) {
   const lum = (r * 299 + g * 587 + b * 114) / (1000 * 255);
   if (lum < 0.08) return 0;                         // shadow / outline

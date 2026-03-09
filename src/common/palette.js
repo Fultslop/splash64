@@ -209,5 +209,117 @@ export const DRIVE_PALETTE = [
   '#00ffcc', // 31 cyan accent
 ];
 
+// Desert / off-road palette — scorched earth, heat haze, sparse dry palms.
+// Rumble slots (8-9) intentionally match ground to make strips invisible.
+export const DRIVE_DESERT = [
+  // Sky — baked rust through pale sandy haze
+  '#120800', // 0  near-black scorched sky
+  '#3a1400', // 1  deep rust
+  '#7a3e10', // 2  amber-brown
+  '#c87c38', // 3  pale sandy horizon haze
+  // Road — warm asphalt + sand-gravel stripe
+  '#1c1810', // 4  road dark (warm asphalt)
+  '#b08838', // 5  road light (sand/gravel texture)
+  // Ground — desert sand
+  '#c08820', // 6  sand dark
+  '#d4a838', // 7  sand light
+  '#c08820', // 8  "rumble red"  = sand dark (invisible, no rumble on dirt)
+  '#d4a838', // 9  "rumble white" = sand light (invisible)
+  '#906818', // 10 center-line (muted, config disables it anyway)
+  '#c89030', // 11 sand avg
+  '#cca038', // 12 sand avg-light
+  // Cactus billboard layers (replaces palms in desert variant)
+  '#080c06', // 13 shadow (near-black, green-tinted)
+  '#1a3410', // 14 body dark green
+  '#2e5820', // 15 body mid green
+  '#4a8030', // 16 body light green
+  '#502870', // 17 purple accent (barrel cactus highlights)
+  '#c8a020', // 18 yellow spines / flowers
+  '#70b840', // 19 bright highlight green
+  // Car — desert: sun-bleached, dusty, sand-coated
+  '#100a04', // 20 shadow (warm dark)
+  '#b83010', // 21 body (faded sun-bleached red)
+  '#181408', // 22 interior (warm dark)
+  '#c8a010', // 23 helmet yellow (faded, dusty)
+  '#603828', // 24 helmet purple → rust-brown (dust-covered)
+  '#c8b888', // 25 detail (sandy-beige chrome)
+  '#000000', // 26 unused
+  '#ffffff', '#000000', '#aaaaaa', '#ff3355', '#00ffcc', // 27-31 UI
+];
+
+// Night drive palette — deep navy sky, dark asphalt, heavy fog, palm silhouettes.
+export const DRIVE_NIGHT = [
+  // Sky — near-black through deep blue-purple
+  '#000210', // 0  midnight black
+  '#000a22', // 1  deep navy
+  '#001a40', // 2  midnight blue
+  '#0a2c68', // 3  blue-purple horizon haze
+  // Road — dark asphalt, barely-visible stripe
+  '#121520', // 4  road dark
+  '#1c2034', // 5  road light (subtle cool blue-grey)
+  // Ground — near-black with blue tint
+  '#040810', // 6  ground dark
+  '#07101c', // 7  ground light
+  '#601010', // 8  rumble red (faint, like distant brake lights)
+  '#182038', // 9  rumble white (dim moonlit blue)
+  '#28260a', // 10 center-line (faded old paint, dim amber)
+  '#050c18', // 11 ground avg
+  '#060e1c', // 12 ground avg-light
+  // Palm — dark silhouettes against night sky
+  '#020204', // 13 shadow
+  '#07050a', // 14 trunk dark
+  '#100c10', // 15 trunk mid
+  '#181218', // 16 trunk light
+  '#020408', // 17 leaf dark
+  '#03060c', // 18 leaf mid
+  '#050a12', // 19 leaf light
+  // Car — night: moonlit, dimmer, blue-white chrome from headlight glow
+  '#040406', // 20 shadow (near-black, cool)
+  '#8a0c0c', // 21 body (dark night red)
+  '#0c0c1c', // 22 interior (cool dark)
+  '#a08808', // 23 helmet yellow (dim)
+  '#401880', // 24 helmet purple (deep)
+  '#c8e0f8', // 25 detail (blue-white, moonlit chrome)
+  '#000000',
+  '#ffffff', '#000000', '#aaaaaa', '#ff3355', '#00ffcc',
+];
+
+// Synthwave palette — deep indigo sky, neon rumble, electric palm silhouettes.
+export const DRIVE_SYNTHWAVE = [
+  // Sky — deep indigo to vivid violet
+  '#04000f', // 0  near-black indigo
+  '#0e0038', // 1  deep purple
+  '#2c0070', // 2  electric purple
+  '#6000c8', // 3  vivid violet horizon haze
+  // Road — near-black with dark purple stripe
+  '#070710', // 4  road dark
+  '#180848', // 5  road light (dark neon purple)
+  // Ground — near-black purple
+  '#03000c', // 6  ground dark
+  '#06001c', // 7  ground light
+  '#c80080', // 8  rumble = hot magenta
+  '#00c8c8', // 9  rumble = electric cyan
+  '#c000c0', // 10 center-line = magenta
+  '#050018', // 11 ground avg
+  '#07001e', // 12 ground avg-light
+  // Palm — neon purple silhouettes
+  '#030014', // 13 shadow
+  '#180030', // 14 trunk dark (deep purple)
+  '#3c005c', // 15 trunk mid
+  '#6800a0', // 16 trunk light (bright purple)
+  '#000830', // 17 leaf dark (deep indigo)
+  '#001060', // 18 leaf mid
+  '#001898', // 19 leaf light (electric blue)
+  // Car — synthwave: neon-soaked, hot red-magenta body, electric cyan chrome
+  '#060010', // 20 shadow (deep purple-black)
+  '#cc0048', // 21 body (hot red-magenta, neon-lit)
+  '#100020', // 22 interior (dark purple)
+  '#f0d000', // 23 helmet yellow (vivid, neon-saturated)
+  '#c010d8', // 24 helmet purple (electric)
+  '#00d8e8', // 25 detail (neon cyan chrome)
+  '#000000',
+  '#ffffff', '#000000', '#aaaaaa', '#ff3355', '#00ffcc',
+];
+
 // All available palettes — one is chosen at random on startup.
 export const PALETTES = [SUNSET, CRIMSON, OCEAN];
