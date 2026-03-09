@@ -7,6 +7,7 @@ Splash 64 is part of an exploration into how far AI-assisted development can go 
 ---
 
 **[▶ View Live Demos](https://fultslop.github.io/splash64/)**
+(currently only runs reliably in firefox)
 
 ---
 
