@@ -128,6 +128,31 @@ export class PixelBuffer {
     }
   }
 
+  // Blit a rasterized text sprite clipped to the vertical range [clipY0, clipY1).
+  // fadeZone: pixels at each clip edge fade in/out by alpha-blending against the
+  // existing buffer contents.  Full-opacity pixels use the fast setPixelRaw path.
+  blitSpriteClipped(sprite, x0, y0, idx, clipY0, clipY1, fadeZone = 0) {
+    const [r, g, b] = this._rgb[idx];
+    for (const [dx, dy] of sprite.pixels) {
+      const py = y0 + dy;
+      if (py < clipY0 || py >= clipY1) continue;
+      const px = x0 + dx;
+      if (px < 0 || px >= this.width || py < 0 || py >= this.height) continue;
+      if (fadeZone > 0) {
+        const alpha = Math.min(py - clipY0, clipY1 - 1 - py, fadeZone) / fadeZone;
+        if (alpha <= 0) continue;
+        if (alpha >= 1) { this.setPixelRaw(px, py, r, g, b); continue; }
+        const i = (py * this.width + px) * 4;
+        this.data[i]     = (this.data[i]     + (r - this.data[i])     * alpha + 0.5) | 0;
+        this.data[i + 1] = (this.data[i + 1] + (g - this.data[i + 1]) * alpha + 0.5) | 0;
+        this.data[i + 2] = (this.data[i + 2] + (b - this.data[i + 2]) * alpha + 0.5) | 0;
+        this.data[i + 3] = 255;
+      } else {
+        this.setPixelRaw(px, py, r, g, b);
+      }
+    }
+  }
+
   // Blit a sprite scaled by `scale` (0..1), nearest-neighbour.
   // sprite must have a `grid: Uint8Array(w*h)` field (see loadSprite.js).
   // fogIdx / fogT: optional distance fog — blends the draw color toward fogIdx

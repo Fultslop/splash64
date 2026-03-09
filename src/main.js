@@ -17,6 +17,57 @@ import { createFpsCounter }              from './common/ui/fps.js';
 import { createMusicPlayer }             from './common/ui/music.js';
 import { DEMOS }                          from './config.js';
 
+// Parse README-style markdown into clean display lines for the credits scroll.
+// Returns an array of strings; empty strings are blank spacer lines.
+function parseCreditsLines(raw) {
+  const lines = [];
+  let inCode = false;
+  for (const line of raw.split('\n')) {
+    const t = line.trim();
+    if (t.startsWith('```')) { inCode = !inCode; continue; }
+    if (inCode) continue;
+    if (t === '---') { lines.push(''); continue; }
+    const hm = t.match(/^#{1,3}\s+(.+)$/);
+    if (hm) { lines.push(hm[1].toUpperCase()); lines.push(''); continue; }
+    const c = t
+      .replace(/\*\*\[([^\]]+)\]\([^)]+\)\*\*/g, (_, s) => s.toUpperCase())
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/^-\s+/, '');
+    lines.push(c);
+  }
+  return lines;
+}
+// Fetch and parse the source file; returns raw string[] (no rasterization yet).
+async function loadRawCreditLines(url) {
+  const raw = await fetch(url).then(r => r.text());
+  return parseCreditsLines(raw);
+}
+// Word-wrap a single line to maxChars, breaking at spaces where possible.
+function wrapLine(text, maxChars) {
+  if (text.length <= maxChars) return [text];
+  const result = [];
+  let remaining = text;
+  while (remaining.length > maxChars) {
+    let breakAt = remaining.lastIndexOf(' ', maxChars);
+    if (breakAt <= 0) breakAt = maxChars;
+    result.push(remaining.slice(0, breakAt).trimEnd());
+    remaining = remaining.slice(breakAt).trimStart();
+  }
+  if (remaining.length > 0) result.push(remaining);
+  return result;
+}
+// Wrap each line to maxCharsPerLine and rasterize to sprites (null = spacer).
+function buildCreditLines(rawLines, maxCharsPerLine) {
+  const wrapped = [];
+  for (const line of rawLines) {
+    if (line.length === 0) { wrapped.push(''); continue; }
+    for (const w of wrapLine(line, maxCharsPerLine)) wrapped.push(w);
+  }
+  return wrapped.map(l => l.length > 0 ? rasterizeText(l, 'C64 Pro Mono', 8, 1, 1) : null);
+}
+
 // Choose a demo name, never repeating the previous session's choice.
 // When DEMOS has a single entry, always returns that entry (dev/test mode).
 function chooseDemoName() {
@@ -69,6 +120,8 @@ async function init() {
 
   // Load all palm variants + car sprites once — reused across drive demo restarts.
   // Each resolved promise nudges the loading bar forward (0.1 → 0.5).
+  // Credits lines are loaded in parallel (fonts already ready at this point).
+  const creditsPromise = loadRawCreditLines('./README.md');
   function spriteProgress(i, total) { loading.setProgress(0.1 + (i / total) * 0.4); }
   const spriteJobs = [
     loadSprite('./graphics/palm1.png'),
@@ -81,6 +134,7 @@ async function init() {
   let spritesDone = 0;
   spriteJobs.forEach(p => p.then(() => spriteProgress(++spritesDone, spriteJobs.length)));
   const [palm1, palm2, cactus1, cactus2, carSprite, carSpriteLeft] = await Promise.all(spriteJobs);
+  const rawCreditLines = await creditsPromise;
   const palmVariants   = [palm1, palm2];
   const cactusVariants = [cactus1, cactus2];
 
@@ -120,7 +174,8 @@ async function init() {
       const config = Object.assign(generateDriveConfig(), DEMOS.drive ?? {});
       renderer.setPalette(config.palette);
       const titleSprite = rasterizeText('//  DRIVE 64  //', 'C64 Pro Mono', 16, 1, 1);
-      const demo = createDriveDemo(renderer.buffer, { config, titleSprite, palmVariants, cactusVariants, carSprite, carSpriteLeft });
+      const creditLines = buildCreditLines(rawCreditLines, config.credits.maxCharsPerLine);
+      const demo = createDriveDemo(renderer.buffer, { config, titleSprite, palmVariants, cactusVariants, carSprite, carSpriteLeft, creditLines });
       setUpdate(wrapWithAutoFade(
         dt => { sampleFps(dt); demo.update(dt); renderer.present(); },
         config.maxDisplayTime, config.fadeDuration, config.fadeInDuration,
@@ -162,7 +217,8 @@ async function init() {
     const config = Object.assign(generateDriveConfig(), DEMOS.drive ?? {});
     renderer.setPalette(config.palette);
     const titleSprite = rasterizeText('//  DRIVE 64  //', 'C64 Pro Mono', 16, 1, 1);
-    const demo = createDriveDemo(renderer.buffer, { config, titleSprite, palmVariants, cactusVariants, carSprite, carSpriteLeft });
+    const creditLines = buildCreditLines(rawCreditLines, config.credits.maxCharsPerLine);
+    const demo = createDriveDemo(renderer.buffer, { config, titleSprite, palmVariants, cactusVariants, carSprite, carSpriteLeft, creditLines });
     setUpdate(wrapWithAutoFade(
       dt => { sampleFps(dt); demo.update(dt); renderer.present(); },
       config.maxDisplayTime,
