@@ -54,6 +54,7 @@ function generateDaytimeConfig() {
       fogMax:    0.75,
     },
     carTargetH:      38,
+    credits:         { speed: 18, lineSpacing: 3, maxCharsPerLine: 34 },
     maxDisplayTime:  30,
     fadeDuration:    2,
     fadeInDuration:  1.5,
@@ -88,6 +89,7 @@ function generateDesertConfig() {
       fogMax:    0.88,     // heavy shimmer
     },
     carTargetH:      38,
+    credits:         { speed: 14, lineSpacing: 3, maxCharsPerLine: 34 },  // lazy heat
     maxDisplayTime:  30,
     fadeDuration:    2,
     fadeInDuration:  1.5,
@@ -123,6 +125,7 @@ function generateNightConfig() {
       fogMax:    0.92,     // nearly black at the horizon
     },
     carTargetH:      38,
+    credits:         { speed: 15, lineSpacing: 3, maxCharsPerLine: 34 },  // slow, moody
     maxDisplayTime:  30,
     fadeDuration:    2,
     fadeInDuration:  1.5,
@@ -158,6 +161,7 @@ function generateSynthwaveConfig() {
       fogMax:    0.80,
     },
     carTargetH:      38,
+    credits:         { speed: 22, lineSpacing: 3, maxCharsPerLine: 34 },  // fast, kinetic
     maxDisplayTime:  30,
     fadeDuration:    2,
     fadeInDuration:  1.5,

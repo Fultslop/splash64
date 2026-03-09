@@ -62,7 +62,7 @@ function easeInOut(t) {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 }
 
-export function createDriveDemo(buffer, { config, titleSprite, palmVariants = null, cactusVariants = null, carSprite = null, carSpriteLeft = null }) {
+export function createDriveDemo(buffer, { config, titleSprite, palmVariants = null, cactusVariants = null, carSprite = null, carSpriteLeft = null, creditLines = [] }) {
   const {
     horizonY, roadHalfWidth,
     stripeLen, grassLen, rumbleLen, rumbleWidth,
@@ -89,6 +89,14 @@ export function createDriveDemo(buffer, { config, titleSprite, palmVariants = nu
   // Title centred horizontally, near the top of the sky.
   const titleX = Math.floor((W - titleSprite.w) / 2);
   const titleY = 8;
+
+  // --- Credits state ---
+  const { speed: creditsSpeed, lineSpacing } = config.credits;
+  const lineH    = 8 + lineSpacing;
+  const totalH   = creditLines.length * lineH;
+  const clipY0   = titleY + titleSprite.h + 4;
+  const clipY1   = H - config.carTargetH - 2;
+  let   creditsY = clipY1;  // start off-screen below
 
   // Stars — generated once, drawn each frame on top of the sky gradient.
   // Synthwave gets two colours (white + neon cyan); night gets plain white.
@@ -216,6 +224,8 @@ export function createDriveDemo(buffer, { config, titleSprite, palmVariants = nu
   function update(dt) {
     scrollZ += config.speed * dt;
     updateCurve(dt);
+    creditsY -= creditsSpeed * dt;
+    if (creditsY + totalH < clipY0) creditsY = clipY1;
 
     // --- Sky ---
     buffer.fillGradientDithered(skyStops, 10);
@@ -305,6 +315,18 @@ export function createDriveDemo(buffer, { config, titleSprite, palmVariants = nu
             buffer.blitScaled(sprites[i], palmX, palmY, scale, PALM_LAYER_COLORS[i], P.HAZE, fogT, flipX);
           }
         }
+      }
+    }
+
+    // --- Credits ---
+    if (creditLines.length > 0) {
+      for (let i = 0; i < creditLines.length; i++) {
+        const sprite = creditLines[i];
+        if (!sprite) continue;  // blank spacer line
+        const lineY = Math.round(creditsY + i * lineH);
+        if (lineY + 8 <= clipY0 || lineY >= clipY1) continue;  // fully outside
+        const x = Math.round((W - sprite.w) / 2);
+        buffer.blitSpriteClipped(sprite, x, lineY, P.UI_WHITE, clipY0, clipY1, lineH * 2);
       }
     }
 
