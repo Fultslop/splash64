@@ -7,6 +7,12 @@ Format:
 
 ---
 
+**09/03/2026 Claude [FIX]**: replace `location.reload()` with soft demo restart to avoid browser security abort on GitHub Pages.
+- `fade.js`: added `onComplete` param to `wrapWithAutoFade`; when fade completes, calls `onComplete()` instead of `location.reload()`. Added `done` flag to prevent double-firing.
+- `main.js`: added `restart()` closure inside `init()` — picks the next demo via `chooseDemoName()`, resizes the renderer, and launches it via `setUpdate` without a page reload.
+- `startSunset` gains an `onComplete` param forwarded to `wrapWithAutoFade`.
+- `location.reload()` remains as a fallback only if no `onComplete` is provided (backwards compat).
+
 **08/03/2026 FS [DOC]**: intitial dev log setup.
 
 **08/03/2026 Claude [FEAT]**: bootstrap canvas infrastructure + sunset sky gradient.

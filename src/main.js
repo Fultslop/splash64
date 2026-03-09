@@ -25,7 +25,7 @@ function chooseDemoName() {
 // Set up and start the sunset demo, swapping in the new palette and update fn.
 // onProgress(0..1): optional callback for loading screen progress reporting.
 // Font must be loaded by the caller before calling this function.
-async function startSunset(buffer, present, setPalette, setUpdate, sampleFps, onProgress, onFadeOut = null) {
+async function startSunset(buffer, present, setPalette, setUpdate, sampleFps, onProgress, onFadeOut = null, onComplete = null) {
   onProgress?.(0.5);
 
   // 16px = clean 2× of the native 8px C64 glyph grid.
@@ -46,6 +46,7 @@ async function startSunset(buffer, present, setPalette, setUpdate, sampleFps, on
     FADE_DURATION,
     FADE_IN_DURATION,
     onFadeOut,
+    onComplete,
   ));
 }
 
@@ -67,7 +68,33 @@ async function init() {
   const renderer  = initRenderer(canvas, C64_PALETTE, rw, rh);
   const { setUpdate } = startLoop(() => {});  // noop until first demo is ready
   const sampleFps = createFpsCounter();
-  const music = createMusicPlayer({ src: './music/very-superbeep.mp3', volume: 0.5, visible: demoName === 'c64' });
+  const music = createMusicPlayer({ src: './music/very-superbeep.mp3', volume: 0.5, visible: true });
+
+  // Restart: pick the next demo and launch it without a loading screen.
+  function restart() {
+    const next = chooseDemoName();
+    if (next === 'c64') {
+      renderer.resize(C64_W, C64_H);
+      renderer.setPalette(C64_PALETTE);
+      const charset = buildCharset('C64 Pro Mono', 8);
+      generateC64Config().then(config => {
+        const onComplete = () => {
+          const newBuf = renderer.resize(RENDER_W, RENDER_H);
+          startSunset(newBuf, renderer.present, renderer.setPalette, setUpdate, sampleFps, undefined, t => music.fadeVolume(t), restart);
+        };
+        const onTickerStart = () => music.scheduleReveal(config.musicDelay ?? 0);
+        const demo = createC64Demo(renderer.buffer, { charset, config, onComplete, onTickerStart });
+        setUpdate(wrapWithAutoFade(
+          dt => { sampleFps(dt); demo.update(dt); renderer.present(); },
+          config.maxDisplayTime, config.fadeDuration, config.fadeInDuration,
+          t => music.fadeVolume(t), restart,
+        ));
+      });
+    } else {
+      const newBuf = renderer.resize(RENDER_W, RENDER_H);
+      startSunset(newBuf, renderer.present, renderer.setPalette, setUpdate, sampleFps, undefined, t => music.fadeVolume(t), restart);
+    }
+  }
 
   if (demoName === 'c64') {
     renderer.setPalette(C64_PALETTE);
@@ -81,7 +108,7 @@ async function init() {
     const onComplete = () => {
       // Shrink to the standard render resolution for the sunset demo.
       const newBuffer = renderer.resize(RENDER_W, RENDER_H);
-      startSunset(newBuffer, renderer.present, renderer.setPalette, setUpdate, sampleFps, undefined, t => music.fadeVolume(t));
+      startSunset(newBuffer, renderer.present, renderer.setPalette, setUpdate, sampleFps, undefined, t => music.fadeVolume(t), restart);
     };
     const onTickerStart = () => music.scheduleReveal(config.musicDelay ?? 0);
     const demo = createC64Demo(renderer.buffer, { charset, config, onComplete, onTickerStart });
@@ -91,6 +118,7 @@ async function init() {
       config.fadeDuration,
       config.fadeInDuration,
       t => music.fadeVolume(t),
+      restart,
     ));
 
   } else {
@@ -98,6 +126,8 @@ async function init() {
     await startSunset(
       renderer.buffer, renderer.present, renderer.setPalette, setUpdate, sampleFps,
       p => loading.setProgress(0.1 + p * 0.9),
+      undefined,
+      restart,
     );
     loading.hide();
   }
