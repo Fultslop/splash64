@@ -72,7 +72,7 @@ function easeInOut(t) {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 }
 
-export function createDriveDemo(buffer, { config, titleSprite, palmVariants = null, carSprite = null }) {
+export function createDriveDemo(buffer, { config, titleSprite, palmVariants = null, carSprite = null, carSpriteLeft = null }) {
   const {
     horizonY, roadHalfWidth,
     stripeLen, grassLen, rumbleLen, rumbleWidth,
@@ -283,16 +283,21 @@ export function createDriveDemo(buffer, { config, titleSprite, palmVariants = nu
 
     // --- Car ---
     // Drawn after billboards so it always appears in front.
-    // Scaled to carTargetH pixels tall; lateral offset drifts to outside of curve.
+    // Sprite switches based on curve direction; right curve mirrors car-left.
     if (carSprite) {
-      const carScale = config.carTargetH / carSprite[0].h;
-      const scaledW  = Math.round(carSprite[0].w * carScale);
-      const scaledH  = Math.round(carSprite[0].h * carScale);
+      const CURVE_THRESHOLD = 25;
+      const sprites = (carSpriteLeft && Math.abs(curveOffset) > CURVE_THRESHOLD)
+        ? carSpriteLeft
+        : carSprite;
+      const flipX    = carSpriteLeft && curveOffset > CURVE_THRESHOLD;
+      const carScale = config.carTargetH / sprites[0].h;
+      const scaledW  = Math.round(sprites[0].w * carScale);
+      const scaledH  = Math.round(sprites[0].h * carScale);
       const carX = Math.round(cx - scaledW / 2 - curveOffset * 0.10);
       const carY = H - scaledH;
-      for (let i = 0; i < carSprite.length; i++) {
-        if (carSprite[i].pixels.length > 0) {
-          buffer.blitScaled(carSprite[i], carX, carY, carScale, CAR_LAYER_COLORS[i]);
+      for (let i = 0; i < sprites.length; i++) {
+        if (sprites[i].pixels.length > 0) {
+          buffer.blitScaled(sprites[i], carX, carY, carScale, CAR_LAYER_COLORS[i], -1, 0, flipX);
         }
       }
     }

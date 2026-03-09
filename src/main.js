@@ -66,13 +66,14 @@ async function init() {
   await document.fonts.load('8px "C64 Pro Mono"');
   loading.setProgress(0.1);
 
-  // Load all palm variants + car once — reused across drive demo restarts.
-  const [palmVariants, carSprite] = await Promise.all([
+  // Load all palm variants + car sprites once — reused across drive demo restarts.
+  const [palmVariants, carSprite, carSpriteLeft] = await Promise.all([
     Promise.all([
       loadSprite('./graphics/palm1.png'),
       loadSprite('./graphics/palm2.png'),
     ]),
-    loadSprite('./graphics/car.png', classifyCarPixel, CAR_N_LAYERS),
+    loadSprite('./graphics/car.png',      classifyCarPixel, CAR_N_LAYERS),
+    loadSprite('./graphics/car-left.png', classifyCarPixel, CAR_N_LAYERS),
   ]);
 
   const canvas    = document.getElementById('screen');
@@ -111,7 +112,7 @@ async function init() {
       const config = Object.assign(generateDriveConfig(), DEMOS.drive ?? {});
       renderer.setPalette(config.palette);
       const titleSprite = rasterizeText('//  DRIVE 64  //', 'C64 Pro Mono', 16, 1, 1);
-      const demo = createDriveDemo(renderer.buffer, { config, titleSprite, palmVariants, carSprite });
+      const demo = createDriveDemo(renderer.buffer, { config, titleSprite, palmVariants, carSprite, carSpriteLeft });
       setUpdate(wrapWithAutoFade(
         dt => { sampleFps(dt); demo.update(dt); renderer.present(); },
         config.maxDisplayTime, config.fadeDuration, config.fadeInDuration,
@@ -153,7 +154,7 @@ async function init() {
     const config = Object.assign(generateDriveConfig(), DEMOS.drive ?? {});
     renderer.setPalette(config.palette);
     const titleSprite = rasterizeText('//  DRIVE 64  //', 'C64 Pro Mono', 16, 1, 1);
-    const demo = createDriveDemo(renderer.buffer, { config, titleSprite, palmVariants, carSprite });
+    const demo = createDriveDemo(renderer.buffer, { config, titleSprite, palmVariants, carSprite, carSpriteLeft });
     setUpdate(wrapWithAutoFade(
       dt => { sampleFps(dt); demo.update(dt); renderer.present(); },
       config.maxDisplayTime,

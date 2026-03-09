@@ -16,7 +16,7 @@ export function generateDriveConfig() {
   return {
     palette:       DRIVE_PALETTE,
     speed,
-    horizonY:      100,   // screen Y of horizon line (50% down the 200px screen)
+    horizonY:      130,   // screen Y of horizon line (50% down the 200px screen)
     roadHalfWidth: 120,   // road half-width in pixels at the very bottom
     stripeLen:     0.50,  // world-space length of each road zebra stripe
     grassLen:      0.50,  // world-space length of grass colour bands
