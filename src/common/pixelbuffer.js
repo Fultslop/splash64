@@ -120,6 +120,35 @@ export class PixelBuffer {
     }
   }
 
+  // Blit a sprite scaled by `scale` (0..1), nearest-neighbour.
+  // sprite must have a `grid: Uint8Array(w*h)` field (see loadSprite.js).
+  // fogIdx / fogT: optional distance fog — blends the draw color toward fogIdx
+  //   by factor fogT (0 = no fog, 1 = fully fog color).  The blend is computed
+  //   once before the loop so there is zero per-pixel overhead vs. the base call.
+  // Clips automatically via setPixelRaw bounds checking.
+  blitScaled(sprite, x0, y0, scale, idx, fogIdx = -1, fogT = 0) {
+    if (scale <= 0) return;
+    const [r0, g0, b0] = this._rgb[idx];
+    let r = r0, g = g0, b = b0;
+    if (fogIdx >= 0 && fogT > 0) {
+      const [fr, fg, fb] = this._rgb[fogIdx];
+      r = (r0 + (fr - r0) * fogT + 0.5) | 0;
+      g = (g0 + (fg - g0) * fogT + 0.5) | 0;
+      b = (b0 + (fb - b0) * fogT + 0.5) | 0;
+    }
+    const sw = Math.max(1, Math.round(sprite.w * scale));
+    const sh = Math.max(1, Math.round(sprite.h * scale));
+    const { w, h, grid } = sprite;
+    for (let py = 0; py < sh; py++) {
+      const sy = Math.min(h - 1, Math.floor(py / scale));
+      const rowBase = sy * w;
+      for (let px = 0; px < sw; px++) {
+        const sx = Math.min(w - 1, Math.floor(px / scale));
+        if (grid[rowBase + sx]) this.setPixelRaw(x0 + px, y0 + py, r, g, b);
+      }
+    }
+  }
+
   // Blit a scrolling sprite at (x0, y0), clipped to viewW pixels wide.
   // scrollX is how many pixels into the sprite we start; wraps seamlessly.
   blitSpriteScrolled(sprite, x0, y0, idx, scrollX, viewW) {

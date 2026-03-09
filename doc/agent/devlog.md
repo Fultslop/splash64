@@ -7,6 +7,13 @@ Format:
 
 ---
 
+**09/03/2026 Claude [FEAT]**: `drive` demo — OutRun-style pseudo-3D road.
+- `src/demo/drive/drive.js`: raster-projection road using 1/y perspective per scanline. Zebra stripes, grass verges, red/white rumble strips, yellow center dashes — all from `fillRect(…, 1, idx)` per row. No new engine primitives needed.
+- `src/demo/drive/config.js`: `generateDriveConfig()` — palette, scroll speed (slight per-session random variation), stripe/grass/rumble periods, timing.
+- `src/common/palette.js`: added `DRIVE_PALETTE` (32 slots, daytime arcade blue sky + asphalt + green grass + red/white rumble + yellow center).
+- `src/config.js` (new): `DEMOS` registry — object whose keys are active demo names and values are config overrides. Single entry = always run that demo (dev mode). Applied via `Object.assign` after each `generateXxxConfig()`.
+- `src/main.js`: `chooseDemoName` now reads from `DEMOS` keys; added drive launch paths for initial boot and `restart()`; all three demos apply their DEMOS overrides.
+
 **09/03/2026 Claude [FIX]**: replace `location.reload()` with soft demo restart to avoid browser security abort on GitHub Pages.
 - `fade.js`: added `onComplete` param to `wrapWithAutoFade`; when fade completes, calls `onComplete()` instead of `location.reload()`. Added `done` flag to prevent double-firing.
 - `main.js`: added `restart()` closure inside `init()` — picks the next demo via `chooseDemoName()`, resizes the renderer, and launches it via `setUpdate` without a page reload.
