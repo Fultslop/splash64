@@ -1,5 +1,11 @@
 # Splash 64
 
+## Project Background
+
+Splash 64 is part of an exploration into how far AI-assisted development can go when building a non-trivial tools, widgets and apps. This project has been built based on a human defined architecture, functional spec and a series of interface contracts, then implemented using using Claude and to a lesser extent Google Gemini.
+
+---
+
 **[▶ View Live Demos](https://fultslop.github.io/splash64/)**
 
 ---

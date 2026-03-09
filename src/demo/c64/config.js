@@ -66,7 +66,7 @@ export async function generateC64Config() {
     ],
     loadResponse: [
       '',
-      'SEARCHING FOR FULTSLOP',
+      'SEARCHING FOR // SPLASH 64 //',
       'LOADING',
       '',
       'READY.',

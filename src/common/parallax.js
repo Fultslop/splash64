@@ -1,14 +1,15 @@
 // Parallax — tracks horizontal scroll offsets for N layers.
-// Each layer has a speed (px/sec). Offsets wrap at wrapWidth so
+// Each layer has a speed (px/sec, negative = right-to-left). Offsets wrap at wrapWidth so
 // shapes can be drawn tiled: once at -offset, once at wrapWidth - offset.
 
-export function createParallax(layers) {
+export function createParallax(layers, direction = 1) {
   // layers: array of { speed, wrapWidth }
   const offsets = layers.map(() => 0);
-
+  
   function update(dt) {
     for (let i = 0; i < layers.length; i++) {
-      offsets[i] = (offsets[i] + layers[i].speed * dt) % layers[i].wrapWidth;
+      const w = layers[i].wrapWidth;
+      offsets[i] = ((offsets[i] + layers[i].speed * dt * direction) % w + w) % w;
     }
   }
 

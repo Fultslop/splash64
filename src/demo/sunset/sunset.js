@@ -127,10 +127,12 @@ export function createSunsetDemo(buffer, { titleSprite, ticker, config = {} } = 
   };
 
   const parallax = createParallax([
-    { speed:  8, wrapWidth: 320 },  // 0: fuji
+    { speed:  4, wrapWidth: 320 },  // 0: fuji
     { speed: 16, wrapWidth: 320 },  // 1: temple
-    { speed: 30, wrapWidth: 320 },  // 2: trees
-  ]);
+    { speed: 32, wrapWidth: 320 },  // 2: trees
+  ], Math.random() > 0.5 
+    ? (0.75 + Math.random() * 1.5) 
+    : (-0.75 + Math.random() * -1.5));
 
   function drawSky() {
     buffer.fillGradientDithered(skyStops, 12);
@@ -144,7 +146,7 @@ export function createSunsetDemo(buffer, { titleSprite, ticker, config = {} } = 
 
   function drawMountain() {
     const ox = parallax.getOffset(0);
-    if (ox < prevMountainOx) {   // offset wrapped — new tile scrolls in
+    if (Math.abs(ox - prevMountainOx) > 160) {   // offset wrapped (either direction) — new tile scrolls in
       fujiA = fujiB;
       fujiB = buildFujiRandom(width, height);
     }
