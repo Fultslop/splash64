@@ -36,10 +36,18 @@ export class PixelBuffer {
     this.data[i + 3] = 255;
   }
 
-  fillRect(x0, y0, w, h, idx) {
+  // fogIdx / fogT: optional distance fog — same semantics as blitScaled.
+  // Blend is pre-computed once before the loops; zero per-pixel overhead.
+  fillRect(x0, y0, w, h, idx, fogIdx = -1, fogT = 0) {
     const x1 = Math.min(x0 + w, this.width);
     const y1 = Math.min(y0 + h, this.height);
-    const [r, g, b] = this._rgb[idx];
+    let [r, g, b] = this._rgb[idx];
+    if (fogIdx >= 0 && fogT > 0) {
+      const [fr, fg, fb] = this._rgb[fogIdx];
+      r = (r + (fr - r) * fogT + 0.5) | 0;
+      g = (g + (fg - g) * fogT + 0.5) | 0;
+      b = (b + (fb - b) * fogT + 0.5) | 0;
+    }
     for (let y = Math.max(y0, 0); y < y1; y++) {
       for (let x = Math.max(x0, 0); x < x1; x++) {
         const i = (y * this.width + x) * 4;
@@ -117,6 +125,56 @@ export class PixelBuffer {
     const [r, g, b] = this._rgb[idx];
     for (const [dx, dy] of sprite.pixels) {
       this.setPixelRaw(x0 + dx, y0 + dy, r, g, b);
+    }
+  }
+
+  // Blit a sprite scaled by `scale` (0..1), nearest-neighbour.
+  // sprite must have a `grid: Uint8Array(w*h)` field (see loadSprite.js).
+  // fogIdx / fogT: optional distance fog — blends the draw color toward fogIdx
+  //   by factor fogT (0 = no fog, 1 = fully fog color).  The blend is computed
+  //   once before the loop so there is zero per-pixel overhead vs. the base call.
+  // Clips automatically via setPixelRaw bounds checking.
+  blitScaled(sprite, x0, y0, scale, idx, fogIdx = -1, fogT = 0, flipX = false) {
+    if (scale <= 0) return;
+    const [r0, g0, b0] = this._rgb[idx];
+    let r = r0, g = g0, b = b0;
+    if (fogIdx >= 0 && fogT > 0) {
+      const [fr, fg, fb] = this._rgb[fogIdx];
+      r = (r0 + (fr - r0) * fogT + 0.5) | 0;
+      g = (g0 + (fg - g0) * fogT + 0.5) | 0;
+      b = (b0 + (fb - b0) * fogT + 0.5) | 0;
+    }
+    const sw = Math.max(1, Math.round(sprite.w * scale));
+    const sh = Math.max(1, Math.round(sprite.h * scale));
+    const { w, h, grid } = sprite;
+    for (let py = 0; py < sh; py++) {
+      const sy = Math.min(h - 1, Math.floor(py / scale));
+      const rowBase = sy * w;
+      for (let px = 0; px < sw; px++) {
+        const sx = Math.min(w - 1, Math.floor(px / scale));
+        if (grid[rowBase + sx]) this.setPixelRaw(x0 + (flipX ? sw - 1 - px : px), y0 + py, r, g, b);
+      }
+    }
+  }
+
+  // Blit a palette-quantized sprite (from loadSpriteQuantized) scaled by `scale`.
+  // grid values are palette indices; 255 = transparent (skipped).
+  // flipX mirrors the sprite horizontally.
+  blitPalettizedScaled(sprite, x0, y0, scale, flipX = false) {
+    if (scale <= 0) return;
+    const sw = Math.max(1, Math.round(sprite.w * scale));
+    const sh = Math.max(1, Math.round(sprite.h * scale));
+    const { w, h, grid } = sprite;
+    for (let py = 0; py < sh; py++) {
+      const sy = Math.min(h - 1, Math.floor(py / scale));
+      const rowBase = sy * w;
+      for (let px = 0; px < sw; px++) {
+        const sx = Math.min(w - 1, Math.floor(px / scale));
+        const idx = grid[rowBase + sx];
+        if (idx === 255) continue;
+        const [r, g, b] = this._rgb[idx];
+        this.setPixelRaw(x0 + (flipX ? sw - 1 - px : px), y0 + py, r, g, b);
+      }
     }
   }
 

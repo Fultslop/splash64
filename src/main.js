@@ -7,16 +7,23 @@ import { generateSunsetConfig, MAX_DISPLAY_TIME, FADE_DURATION, FADE_IN_DURATION
 import { createC64Demo }                  from './demo/c64/c64.js';
 import { generateC64Config, C64_W, C64_H } from './demo/c64/config.js';
 import { buildCharset }                   from './demo/c64/charset.js';
+import { createDriveDemo }               from './demo/drive/drive.js';
+import { generateDriveConfig }           from './demo/drive/config.js';
+import { loadSprite, loadSpriteQuantized } from './common/loadSprite.js';
+import { DRIVE_PALETTE }                  from './common/palette.js';
 import { createLoadingScreen }            from './common/loading.js';
 import { wrapWithAutoFade }               from './common/fade.js';
 import { createFpsCounter }              from './common/ui/fps.js';
 import { createMusicPlayer }             from './common/ui/music.js';
+import { DEMOS }                          from './config.js';
 
 // Choose a demo name, never repeating the previous session's choice.
+// When DEMOS has a single entry, always returns that entry (dev/test mode).
 function chooseDemoName() {
-  const DEMOS   = ['sunset', 'c64'];
+  const names = Object.keys(DEMOS);
+  if (names.length === 1) return names[0];
   const last    = localStorage.getItem('lastDemo') ?? '';
-  const choices = DEMOS.filter(d => d !== last);
+  const choices = names.filter(d => d !== last);
   const name    = choices[Math.floor(Math.random() * choices.length)];
   localStorage.setItem('lastDemo', name);
   return name;
@@ -30,7 +37,7 @@ async function startSunset(buffer, present, setPalette, setUpdate, sampleFps, on
 
   // 16px = clean 2× of the native 8px C64 glyph grid.
   const titleSprite = rasterizeText('//  SPLASH 64  //', 'C64 Pro Mono', 16, 1, 1);
-  const config      = generateSunsetConfig(titleSprite);
+  const config      = Object.assign(generateSunsetConfig(titleSprite), DEMOS.sunset ?? {});
   setPalette(config.palette);
 
   const tickerText   = await loadTickerText('./doc/agent/devlog.md', 10);
@@ -60,6 +67,20 @@ async function init() {
   await document.fonts.load('8px "C64 Pro Mono"');
   loading.setProgress(0.1);
 
+  // Load all palm variants + car sprites once — reused across drive demo restarts.
+  // Each resolved promise nudges the loading bar forward (0.1 → 0.5).
+  function spriteProgress(i, total) { loading.setProgress(0.1 + (i / total) * 0.4); }
+  const spriteJobs = [
+    loadSprite('./graphics/palm1.png'),
+    loadSprite('./graphics/palm2.png'),
+    loadSpriteQuantized('./graphics/car.png',      DRIVE_PALETTE),
+    loadSpriteQuantized('./graphics/car-left.png', DRIVE_PALETTE),
+  ];
+  let spritesDone = 0;
+  spriteJobs.forEach(p => p.then(() => spriteProgress(++spritesDone, spriteJobs.length)));
+  const [palm1, palm2, carSprite, carSpriteLeft] = await Promise.all(spriteJobs);
+  const palmVariants = [palm1, palm2];
+
   const canvas    = document.getElementById('screen');
   const demoName  = chooseDemoName();
 
@@ -77,7 +98,8 @@ async function init() {
       renderer.resize(C64_W, C64_H);
       renderer.setPalette(C64_PALETTE);
       const charset = buildCharset('C64 Pro Mono', 8);
-      generateC64Config().then(config => {
+      generateC64Config().then(cfg => {
+        const config = Object.assign(cfg, DEMOS.c64 ?? {});
         const onComplete = () => {
           const newBuf = renderer.resize(RENDER_W, RENDER_H);
           startSunset(newBuf, renderer.present, renderer.setPalette, setUpdate, sampleFps, undefined, t => music.fadeVolume(t), restart);
@@ -90,6 +112,17 @@ async function init() {
           t => music.fadeVolume(t), restart,
         ));
       });
+    } else if (next === 'drive') {
+      renderer.resize(RENDER_W, RENDER_H);
+      const config = Object.assign(generateDriveConfig(), DEMOS.drive ?? {});
+      renderer.setPalette(config.palette);
+      const titleSprite = rasterizeText('//  DRIVE 64  //', 'C64 Pro Mono', 16, 1, 1);
+      const demo = createDriveDemo(renderer.buffer, { config, titleSprite, palmVariants, carSprite, carSpriteLeft });
+      setUpdate(wrapWithAutoFade(
+        dt => { sampleFps(dt); demo.update(dt); renderer.present(); },
+        config.maxDisplayTime, config.fadeDuration, config.fadeInDuration,
+        undefined, restart,
+      ));
     } else {
       const newBuf = renderer.resize(RENDER_W, RENDER_H);
       startSunset(newBuf, renderer.present, renderer.setPalette, setUpdate, sampleFps, undefined, t => music.fadeVolume(t), restart);
@@ -98,10 +131,11 @@ async function init() {
 
   if (demoName === 'c64') {
     renderer.setPalette(C64_PALETTE);
-    loading.setProgress(0.5);
+    loading.setProgress(0.6);
 
     const charset = buildCharset('C64 Pro Mono', 8);
-    const config  = await generateC64Config();
+    const cfg     = await generateC64Config();
+    const config  = Object.assign(cfg, DEMOS.c64 ?? {});
     loading.setProgress(1.0);
     loading.hide();
 
@@ -121,11 +155,26 @@ async function init() {
       restart,
     ));
 
+  } else if (demoName === 'drive') {
+    const config = Object.assign(generateDriveConfig(), DEMOS.drive ?? {});
+    renderer.setPalette(config.palette);
+    const titleSprite = rasterizeText('//  DRIVE 64  //', 'C64 Pro Mono', 16, 1, 1);
+    const demo = createDriveDemo(renderer.buffer, { config, titleSprite, palmVariants, carSprite, carSpriteLeft });
+    setUpdate(wrapWithAutoFade(
+      dt => { sampleFps(dt); demo.update(dt); renderer.present(); },
+      config.maxDisplayTime,
+      config.fadeDuration,
+      config.fadeInDuration,
+      undefined,
+      restart,
+    ));
+    loading.hide();
+
   } else {
-    // Map startSunset's 0..1 progress into the 0.1..1.0 range (0.1 already consumed above).
+    // Map startSunset's 0..1 progress into the 0.5..1.0 range (sprites consumed 0.1→0.5).
     await startSunset(
       renderer.buffer, renderer.present, renderer.setPalette, setUpdate, sampleFps,
-      p => loading.setProgress(0.1 + p * 0.9),
+      p => loading.setProgress(0.5 + p * 0.5),
       undefined,
       restart,
     );

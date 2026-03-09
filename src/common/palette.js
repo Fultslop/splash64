@@ -163,5 +163,51 @@ export const C64_PALETTE = [
   '#000000','#000000','#000000','#000000',
 ];
 
+// OutRun-style daytime arcade palette for the drive demo.
+// Slot layout differs from the sunset convention — drive owns its own indices.
+//  0–3:   sky gradient (top → horizon)
+//  4–5:   road surface (dark / light asphalt stripes)
+//  6–7:   road-side grass (dark / light)
+//  8–9:   rumble strip (red / white)
+//  10:    center dashes (yellow)
+//  11–26: unused (black padding)
+//  27–31: UI (white, black, grey, red, cyan) — same as sunset convention
+export const DRIVE_PALETTE = [
+  '#0698ff', // 0  deep night blue (sky top)
+  '#07a1ff', // 1  royal blue
+  '#20b0ff', // 2  bright sky blue
+  '#38c8ff', // 3  pale horizon haze
+  '#252738', // 4  road dark (asphalt)
+  '#2a2d38', // 5  road light (asphalt stripe)
+  '#1a6320', // 6  grass dark
+  '#1a6e22', // 7  grass light
+  '#cc2200', // 8  rumble red
+  '#e0e0e0', // 9  rumble white
+  '#909c00', // 10 center-line yellow
+  '#1a6721', // 11 grass avg
+  '#1a6a21', // 12 grass avg - light
+  '#100804', // 13 palm shadow / outline
+  '#3a1808', // 14 palm trunk dark
+  '#8a4818', // 15 palm trunk mid
+  '#d07828', // 16 palm trunk light (orange-tan + coconuts)
+  '#186008', // 17 palm leaf dark
+  '#3a8010', // 18 palm leaf mid
+  '#90d020', // 19 palm leaf light (bright lime)
+  // Car sprite layers (slots 20–25)
+  '#080608', // 20 car shadow / outline
+  '#cc1010', // 21 car body red
+  '#12101e', // 22 car interior / windshield dark
+  '#e8c820', // 23 car helmet yellow
+  '#7828b0', // 24 car helmet purple
+  '#d8d8d8', // 25 car detail white (tail lights, chrome)
+  '#000000', // 26 unused
+  // UI — same positions as sunset palettes
+  '#ffffff', // 27 white
+  '#000000', // 28 black
+  '#aaaaaa', // 29 grey
+  '#ff3355', // 30 red accent
+  '#00ffcc', // 31 cyan accent
+];
+
 // All available palettes — one is chosen at random on startup.
 export const PALETTES = [SUNSET, CRIMSON, OCEAN];
