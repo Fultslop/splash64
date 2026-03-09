@@ -2,6 +2,7 @@
 // Layers (back to front): sky → sun → fuji → temple → trees → boids → title → ticker
 
 import { createParallax } from '../../common/parallax.js';
+import { SKY_STOP_SCALARS, SUN as SUN_CFG } from './config.js';
 
 // Palette indices (SUNSET array from palette.js)
 const P = {
@@ -26,20 +27,23 @@ const P = {
 // --- Shape definitions (all in local 320-wide coordinate space) ---
 
 const FUJI_BODY = [
-  [160,  45],
-  [210,  82],
-  [340, 158],
-  [-20, 158],
-  [110,  82],
+  [160,  65],
+  [210, 102],
+  [340, 178],
+  [-20, 178],
+  [110, 102],
 ];
 
+// Bottom Y of the mountain body — used for the base dither strip.
+const FUJI_BASE_Y = 178;
+
 const FUJI_SNOW = [
-  [160,  40],
-  [186,  67],
-  [175,  75],
-  [160,  71],
-  [145,  75],
-  [134,  67],
+  [160,  60],
+  [186,  87],
+  [175,  95],
+  [160,  91],
+  [145,  95],
+  [134,  87],
 ];
 
 // Temple: components defined relative to (cx=0, baseY=0), drawn at a fixed position.
@@ -72,30 +76,27 @@ const TREE_STRIP = [
 export function createSunsetDemo(buffer, { titleSprite, ticker, config = {} } = {}) {
   const { width, height } = buffer;
 
-  const horizonY = Math.floor(height * 0.75);
-
-  const skyStops = [
-    { y: 0,                         idx: P.SKY_TOP  },
-    { y: Math.floor(height * 0.10), idx: P.SKY_1    },
-    { y: Math.floor(height * 0.22), idx: P.SKY_2    },
-    { y: Math.floor(height * 0.38), idx: P.SKY_3    },
-    { y: Math.floor(height * 0.52), idx: P.SKY_4    },
-    { y: Math.floor(height * 0.63), idx: P.SKY_5    },
-    { y: Math.floor(height * 0.72), idx: P.HORIZON  },
-    { y: horizonY,                              idx: P.GROUND_0 },
-    { y: horizonY + Math.floor(height * 0.08), idx: P.GROUND_1 },
+  const SKY_PALETTE = [
+    P.SKY_TOP, P.SKY_1, P.SKY_2, P.SKY_3, P.SKY_4,
+    P.SKY_5, P.HORIZON, P.GROUND_0, P.GROUND_1,
   ];
+  const skyStops = SKY_STOP_SCALARS.map((s, i) => ({
+    y: Math.floor(height * s),
+    idx: SKY_PALETTE[i],
+  }));
+
+  const horizonY = skyStops[7].y;
 
   const sun = {
-    x: Math.floor(width  * 0.5),
-    y: Math.floor(height * 0.62),
-    r: 12,
+    x: Math.floor(width  * SUN_CFG.xScale),
+    y: Math.floor(height * SUN_CFG.yScale),
+    r: SUN_CFG.r,
   };
 
   // Temple sits at a fixed horizontal center, just above horizon.
   const temple = {
     cx:    Math.floor(width * 0.5),
-    baseY: horizonY+10,
+    baseY: horizonY + 0 ,
   };
 
   const parallax = createParallax([
@@ -109,7 +110,7 @@ export function createSunsetDemo(buffer, { titleSprite, ticker, config = {} } = 
   }
 
   function drawSun() {
-    buffer.fillCircle(sun.x, sun.y, sun.r + 6, P.SUN_EDGE);
+    //buffer.fillCircle(sun.x, sun.y, sun.r + 6, P.SUN_EDGE);
     buffer.fillCircle(sun.x, sun.y, sun.r + 3, P.SUN_RIM);
     buffer.fillCircle(sun.x, sun.y, sun.r,     P.SUN_BRIGHT);
   }
@@ -120,6 +121,7 @@ export function createSunsetDemo(buffer, { titleSprite, ticker, config = {} } = 
       buffer.fillPolygon(FUJI_SNOW, P.FUJI_DARK, ox);
       buffer.fillPolygon(FUJI_SNOW, P.SNOW,      ox);
     });
+    
   }
 
   function drawTemple() {

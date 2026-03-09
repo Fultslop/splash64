@@ -9,6 +9,13 @@ import { RENDER_W, RENDER_H } from '../../common/renderer.js';
 export const TICKER_H         = 24;
 export const TITLE_TICKER_GAP = 30; // minimum px gap between title and ticker bar
 
+// Sky gradient band positions as fractions of render height.
+// Each entry pairs with the corresponding palette index in sunset.js (SKY_TOP … GROUND_1).
+export const SKY_STOP_SCALARS = [0, 0.10, 0.15, 0.2, 0.27, 0.35, 0.44, 0.98, 1];
+
+// Sun layout (fractions of render width / height, plus fixed pixel radius).
+export const SUN = { xScale: 0.65, yScale: 0.62, r: 20 };
+
 export function generateSunsetConfig(titleSprite) {
   // --- Palette: no repeat on consecutive refreshes ---
   const lastIdx  = parseInt(localStorage.getItem('paletteIdx') ?? '-1', 10);
