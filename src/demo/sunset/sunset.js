@@ -105,7 +105,7 @@ export function createSunsetDemo(buffer, { titleSprite, ticker, config = {} } = 
   ]);
 
   function drawSky() {
-    buffer.fillGradientH(skyStops);
+    buffer.fillGradientDithered(skyStops, 12);
   }
 
   function drawSun() {

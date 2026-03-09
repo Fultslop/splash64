@@ -10,7 +10,7 @@ export function createLoadingScreen() {
   ].join(';');
 
   const label = document.createElement('div');
-  label.textContent = '// FS SPLASH //';
+  label.textContent = '// FS SPLASH 64 //';
   label.style.cssText = 'color:#888;font:bold 13px monospace;letter-spacing:0.35em;margin-bottom:28px';
 
   const barWrap = document.createElement('div');

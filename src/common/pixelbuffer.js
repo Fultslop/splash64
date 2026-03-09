@@ -123,6 +123,54 @@ export class PixelBuffer {
     }
   }
 
+  // Horizontal gradient with Bayer 4×4 ordered dithering at band transitions.
+  // stops: same format as fillGradientH — array of { y, idx } sorted by y.
+  // ditherRows: number of rows before each stop boundary to blend with dithering.
+  fillGradientDithered(stops, ditherRows = 4) {
+    // 4×4 Bayer matrix, values 0..15 (threshold = value / 16).
+    const B = [
+       0,  8,  2, 10,
+      12,  4, 14,  6,
+       3, 11,  1,  9,
+      15,  7, 13,  5,
+    ];
+
+    let si = 0;
+    for (let y = 0; y < this.height; y++) {
+      while (si + 1 < stops.length && stops[si + 1].y <= y) si++;
+
+      const rowBase  = y * this.width * 4;
+      const nextStop = si + 1 < stops.length ? stops[si + 1] : null;
+      const inDither = nextStop && y >= nextStop.y - ditherRows;
+
+      if (inDither) {
+        // t: 0 = all current color, 1 = all next color
+        const t    = (y - (nextStop.y - ditherRows)) / ditherRows;
+        const [r0, g0, b0] = this._rgb[stops[si].idx];
+        const [r1, g1, b1] = this._rgb[nextStop.idx];
+        const bayerRow = (y & 3) * 4;
+        for (let x = 0; x < this.width; x++) {
+          const threshold = B[bayerRow + (x & 3)] / 16;
+          const useNext   = t > threshold;
+          const i = rowBase + x * 4;
+          this.data[i]     = useNext ? r1 : r0;
+          this.data[i + 1] = useNext ? g1 : g0;
+          this.data[i + 2] = useNext ? b1 : b0;
+          this.data[i + 3] = 255;
+        }
+      } else {
+        const [r, g, b] = this._rgb[stops[si].idx];
+        for (let x = 0; x < this.width; x++) {
+          const i = rowBase + x * 4;
+          this.data[i]     = r;
+          this.data[i + 1] = g;
+          this.data[i + 2] = b;
+          this.data[i + 3] = 255;
+        }
+      }
+    }
+  }
+
   // Blit pixel buffer to canvas context.
   flush(ctx) {
     // apply post render effects

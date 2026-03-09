@@ -134,8 +134,9 @@ Slot layout (must be preserved when adding new palettes):
 **C64 printer text** (`src/demo/c64/config.js`):
 - `loadPrinterText(url, startLine)`: fetches text preserving newlines; trims trailing whitespace per line; collapses runs of 2+ blank lines to 1. Used instead of `loadTickerText` so the C64 terminal output respects source line structure.
 
-Web fonts loaded via Google Fonts `<link>` in `index.html`.
-Current fonts: **Shojumaru** (title), **Press Start 2P** (ticker).
+Both demos use **C64 Pro Mono** (local `@font-face`) for all text rendering.
+Title rasterized at 16px (clean 2× of the native 8px grid), ticker at 8px native.
+No Google Fonts dependency.
 
 ---
 

@@ -87,22 +87,19 @@ function chooseDemoName() {
 // Set up and start the sunset demo, swapping in the new palette and update fn.
 // onProgress(0..1): optional callback for loading screen progress reporting.
 async function startSunset(buffer, present, setPalette, setUpdate, sampleFps, onProgress) {
-  // Force-load Google Fonts before rasterizing — document.fonts.ready does not
-  // guarantee display:swap fonts are available, only that queued loads have settled.
-  await Promise.all([
-    document.fonts.load('36px Shojumaru'),
-    document.fonts.load('10px "Press Start 2P"'),
-  ]);
+  // C64 Pro Mono is a @font-face font — not fetched until explicitly requested.
+  await document.fonts.load('8px "C64 Pro Mono"');
   onProgress?.(0.5);
 
-  const titleSprite = rasterizeText('// Fultslop //', 'Shojumaru', 36);
+  // 16px = clean 2× of the native 8px C64 glyph grid.
+  const titleSprite = rasterizeText('// Fultslop //', 'C64 Pro Mono', 16, 1, 1);
   const config      = generateSunsetConfig(titleSprite);
   setPalette(config.palette);
 
   const tickerText   = await loadTickerText('./doc/agent/devlog.md', 10);
   onProgress?.(0.9);
 
-  const tickerSprite = rasterizeText(tickerText, 'Press Start 2P', 10, 1, 1);
+  const tickerSprite = rasterizeText(tickerText, 'C64 Pro Mono', 8, 1, 1);
   const ticker       = createTicker(tickerSprite, 40);
 
   const demo = createSunsetDemo(buffer, { titleSprite, ticker, config });
