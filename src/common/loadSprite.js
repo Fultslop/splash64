@@ -25,26 +25,6 @@
 
 export const PALM_N_LAYERS = 7;
 
-// Car sprite classifier — 6 layers.
-// Layer order (painter's algorithm):
-//   0  shadow / outline  near-black (lum < 0.12)
-//   1  red body          red-dominant (r > g*2, r > b*2)
-//   2  dark interior     windshield, dark grey — catch-all
-//   3  yellow helmet     high r+g, low b
-//   4  purple helmet     blue-purple dominant
-//   5  white detail      tail lights, chrome (lum > 0.65)
-export const CAR_N_LAYERS = 6;
-
-export function classifyCarPixel(r, g, b) {
-  const lum = (r * 299 + g * 587 + b * 114) / (1000 * 255);
-  if (lum < 0.12)                                   return 0; // shadow/outline
-  if (r > 180 && g > 130 && b < 100)               return 3; // yellow helmet
-  if (b > 100 && r > 60 && g < b * 0.75)           return 4; // purple helmet
-  if (r > 160 && r > g * 2.0 && r > b * 2.0)       return 1; // red body
-  if (lum > 0.65)                                   return 5; // white detail
-  return 2;                                                    // dark interior
-}
-
 export function classifyPalmPixel(r, g, b) {
   const lum = (r * 299 + g * 587 + b * 114) / (1000 * 255);
   if (lum < 0.08) return 0;                         // shadow / outline
@@ -85,6 +65,59 @@ export async function loadSprite(url, classify = classifyPalmPixel, nLayers = PA
       resolve(layers.map(l => ({ ...l, w, h })));
     };
     img.onerror = () => reject(new Error(`loadSprite: failed to load ${url}`));
+    img.src = url;
+  });
+}
+
+// loadSpriteQuantized — palette-aware PNG loader.
+//
+// Quantizes each opaque pixel to the nearest colour in `palette` (array of
+// hex strings, e.g. DRIVE_PALETTE) using squared RGB distance.  Transparent
+// pixels (alpha ≤ 32) are stored as 255 in the grid.
+//
+// Returns a single sprite { grid: Uint8Array(w*h), w, h } where each cell
+// holds a palette index (0–254) or 255 for transparent.  Use with
+// PixelBuffer.blitPalettizedScaled / blitPalettized.
+export async function loadSpriteQuantized(url, palette) {
+  // Pre-parse palette to [r,g,b] once.
+  const rgb = palette.map(hex => {
+    const v = parseInt(hex.slice(1), 16);
+    return [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff];
+  });
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const { naturalWidth: w, naturalHeight: h } = img;
+      const canvas = document.createElement('canvas');
+      canvas.width  = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const { data } = ctx.getImageData(0, 0, w, h);
+
+      const grid = new Uint8Array(w * h).fill(255); // 255 = transparent
+
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const i = (y * w + x) * 4;
+          if (data[i + 3] <= 32) continue; // transparent
+          const r = data[i], g = data[i + 1], b = data[i + 2];
+
+          // Find nearest palette colour by squared RGB distance.
+          let bestIdx = 0, bestDist = Infinity;
+          for (let p = 0; p < rgb.length; p++) {
+            const dr = r - rgb[p][0], dg = g - rgb[p][1], db = b - rgb[p][2];
+            const dist = dr * dr + dg * dg + db * db;
+            if (dist < bestDist) { bestDist = dist; bestIdx = p; }
+          }
+          grid[y * w + x] = bestIdx;
+        }
+      }
+
+      resolve({ grid, w, h });
+    };
+    img.onerror = () => reject(new Error(`loadSpriteQuantized: failed to load ${url}`));
     img.src = url;
   });
 }

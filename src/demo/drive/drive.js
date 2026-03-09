@@ -44,17 +44,7 @@ const P = {
   PALM_LEAF_M:  18,
   PALM_LEAF_L:  19,
   UI_WHITE:     27,
-  // Car layers — palette slots 20–25.
-  CAR_SHADOW:   20,
-  CAR_BODY:     21,
-  CAR_INTERIOR: 22,
-  CAR_HELMET_Y: 23,
-  CAR_HELMET_P: 24,
-  CAR_DETAIL:   25,
 };
-
-// Color index for each car layer (indexed 0–5, matching classifyCarPixel order).
-const CAR_LAYER_COLORS = [20, 21, 22, 23, 24, 25];
 
 // Color index for each palm layer (indexed 0–6, matching loadSprite.js layer order).
 const PALM_LAYER_COLORS = [
@@ -285,21 +275,17 @@ export function createDriveDemo(buffer, { config, titleSprite, palmVariants = nu
     // Drawn after billboards so it always appears in front.
     // Sprite switches based on curve direction; right curve mirrors car-left.
     if (carSprite) {
-      const CURVE_THRESHOLD = 25;
-      const sprites = (carSpriteLeft && Math.abs(curveOffset) > CURVE_THRESHOLD)
+      const CURVE_THRESHOLD = 15;
+      const sprite = (carSpriteLeft && Math.abs(curveOffset) > CURVE_THRESHOLD)
         ? carSpriteLeft
         : carSprite;
       const flipX    = carSpriteLeft && curveOffset > CURVE_THRESHOLD;
-      const carScale = config.carTargetH / sprites[0].h;
-      const scaledW  = Math.round(sprites[0].w * carScale);
-      const scaledH  = Math.round(sprites[0].h * carScale);
+      const carScale = config.carTargetH / sprite.h;
+      const scaledW  = Math.round(sprite.w * carScale);
+      const scaledH  = Math.round(sprite.h * carScale);
       const carX = Math.round(cx - scaledW / 2 - curveOffset * 0.10);
       const carY = H - scaledH;
-      for (let i = 0; i < sprites.length; i++) {
-        if (sprites[i].pixels.length > 0) {
-          buffer.blitScaled(sprites[i], carX, carY, carScale, CAR_LAYER_COLORS[i], -1, 0, flipX);
-        }
-      }
+      buffer.blitPalettizedScaled(sprite, carX, carY, carScale, flipX);
     }
 
     // --- Title ---

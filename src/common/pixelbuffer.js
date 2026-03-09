@@ -157,6 +157,27 @@ export class PixelBuffer {
     }
   }
 
+  // Blit a palette-quantized sprite (from loadSpriteQuantized) scaled by `scale`.
+  // grid values are palette indices; 255 = transparent (skipped).
+  // flipX mirrors the sprite horizontally.
+  blitPalettizedScaled(sprite, x0, y0, scale, flipX = false) {
+    if (scale <= 0) return;
+    const sw = Math.max(1, Math.round(sprite.w * scale));
+    const sh = Math.max(1, Math.round(sprite.h * scale));
+    const { w, h, grid } = sprite;
+    for (let py = 0; py < sh; py++) {
+      const sy = Math.min(h - 1, Math.floor(py / scale));
+      const rowBase = sy * w;
+      for (let px = 0; px < sw; px++) {
+        const sx = Math.min(w - 1, Math.floor(px / scale));
+        const idx = grid[rowBase + sx];
+        if (idx === 255) continue;
+        const [r, g, b] = this._rgb[idx];
+        this.setPixelRaw(x0 + (flipX ? sw - 1 - px : px), y0 + py, r, g, b);
+      }
+    }
+  }
+
   // Blit a scrolling sprite at (x0, y0), clipped to viewW pixels wide.
   // scrollX is how many pixels into the sprite we start; wraps seamlessly.
   blitSpriteScrolled(sprite, x0, y0, idx, scrollX, viewW) {

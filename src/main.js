@@ -9,7 +9,8 @@ import { generateC64Config, C64_W, C64_H } from './demo/c64/config.js';
 import { buildCharset }                   from './demo/c64/charset.js';
 import { createDriveDemo }               from './demo/drive/drive.js';
 import { generateDriveConfig }           from './demo/drive/config.js';
-import { loadSprite, classifyCarPixel, CAR_N_LAYERS } from './common/loadSprite.js';
+import { loadSprite, loadSpriteQuantized } from './common/loadSprite.js';
+import { DRIVE_PALETTE }                  from './common/palette.js';
 import { createLoadingScreen }            from './common/loading.js';
 import { wrapWithAutoFade }               from './common/fade.js';
 import { createFpsCounter }              from './common/ui/fps.js';
@@ -67,14 +68,18 @@ async function init() {
   loading.setProgress(0.1);
 
   // Load all palm variants + car sprites once — reused across drive demo restarts.
-  const [palmVariants, carSprite, carSpriteLeft] = await Promise.all([
-    Promise.all([
-      loadSprite('./graphics/palm1.png'),
-      loadSprite('./graphics/palm2.png'),
-    ]),
-    loadSprite('./graphics/car.png',      classifyCarPixel, CAR_N_LAYERS),
-    loadSprite('./graphics/car-left.png', classifyCarPixel, CAR_N_LAYERS),
-  ]);
+  // Each resolved promise nudges the loading bar forward (0.1 → 0.5).
+  function spriteProgress(i, total) { loading.setProgress(0.1 + (i / total) * 0.4); }
+  const spriteJobs = [
+    loadSprite('./graphics/palm1.png'),
+    loadSprite('./graphics/palm2.png'),
+    loadSpriteQuantized('./graphics/car.png',      DRIVE_PALETTE),
+    loadSpriteQuantized('./graphics/car-left.png', DRIVE_PALETTE),
+  ];
+  let spritesDone = 0;
+  spriteJobs.forEach(p => p.then(() => spriteProgress(++spritesDone, spriteJobs.length)));
+  const [palm1, palm2, carSprite, carSpriteLeft] = await Promise.all(spriteJobs);
+  const palmVariants = [palm1, palm2];
 
   const canvas    = document.getElementById('screen');
   const demoName  = chooseDemoName();
@@ -126,7 +131,7 @@ async function init() {
 
   if (demoName === 'c64') {
     renderer.setPalette(C64_PALETTE);
-    loading.setProgress(0.5);
+    loading.setProgress(0.6);
 
     const charset = buildCharset('C64 Pro Mono', 8);
     const cfg     = await generateC64Config();
@@ -166,10 +171,10 @@ async function init() {
     loading.hide();
 
   } else {
-    // Map startSunset's 0..1 progress into the 0.1..1.0 range (0.1 already consumed above).
+    // Map startSunset's 0..1 progress into the 0.5..1.0 range (sprites consumed 0.1→0.5).
     await startSunset(
       renderer.buffer, renderer.present, renderer.setPalette, setUpdate, sampleFps,
-      p => loading.setProgress(0.1 + p * 0.9),
+      p => loading.setProgress(0.5 + p * 0.5),
       undefined,
       restart,
     );
