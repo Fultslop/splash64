@@ -1,8 +1,19 @@
-import { applyFullCRTEffect } from './postrender.js';
-
 // PixelBuffer — software rasterizer backed by ImageData.
 // All drawing uses palette indices (0–31). The palette is fixed at construction,
 // enforcing the 32-color constraint and enabling palette swapping.
+
+// 4×4 Bayer ordered-dither matrix, values 0–15 (threshold = value / 16).
+const BAYER4 = [
+   0,  8,  2, 10,
+  12,  4, 14,  6,
+   3, 11,  1,  9,
+  15,  7, 13,  5,
+];
+
+function parseHexColor(hex) {
+  const v = parseInt(hex.slice(1), 16);
+  return [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff];
+}
 
 export class PixelBuffer {
   constructor(width, height, palette) {
@@ -12,10 +23,7 @@ export class PixelBuffer {
     this.data      = this.imageData.data; // Uint8ClampedArray, RGBA
 
     // Pre-parse palette hex strings to [r, g, b] for fast lookup.
-    this._rgb = palette.map(hex => {
-      const v = parseInt(hex.slice(1), 16);
-      return [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff];
-    });
+    this._rgb = palette.map(parseHexColor);
   }
 
   setPixel(x, y, idx) {
@@ -127,14 +135,6 @@ export class PixelBuffer {
   // stops: same format as fillGradientH — array of { y, idx } sorted by y.
   // ditherRows: number of rows before each stop boundary to blend with dithering.
   fillGradientDithered(stops, ditherRows = 4) {
-    // 4×4 Bayer matrix, values 0..15 (threshold = value / 16).
-    const B = [
-       0,  8,  2, 10,
-      12,  4, 14,  6,
-       3, 11,  1,  9,
-      15,  7, 13,  5,
-    ];
-
     let si = 0;
     for (let y = 0; y < this.height; y++) {
       while (si + 1 < stops.length && stops[si + 1].y <= y) si++;
@@ -150,7 +150,7 @@ export class PixelBuffer {
         const [r1, g1, b1] = this._rgb[nextStop.idx];
         const bayerRow = (y & 3) * 4;
         for (let x = 0; x < this.width; x++) {
-          const threshold = B[bayerRow + (x & 3)] / 16;
+          const threshold = BAYER4[bayerRow + (x & 3)] / 16;
           const useNext   = t > threshold;
           const i = rowBase + x * 4;
           this.data[i]     = useNext ? r1 : r0;
@@ -174,22 +174,16 @@ export class PixelBuffer {
   // Dithered horizontal strip — blends idx0 (top) → idx1 (bottom) over `rows` rows.
   // Uses the same 4×4 Bayer matrix as fillGradientDithered.
   fillDitherStrip(x0, y0, w, rows, idx0, idx1) {
-    const B = [
-       0,  8,  2, 10,
-      12,  4, 14,  6,
-       3, 11,  1,  9,
-      15,  7, 13,  5,
-    ];
     const [r0, g0, b0] = this._rgb[idx0];
     const [r1, g1, b1] = this._rgb[idx1];
     const xEnd = Math.min(x0 + w, this.width);
     const yEnd = Math.min(y0 + rows, this.height);
     for (let y = Math.max(y0, 0); y < yEnd; y++) {
-      const t         = (y - y0) / rows;
-      const bayerRow  = (y & 3) * 4;
-      const rowBase   = y * this.width * 4;
+      const t        = (y - y0) / rows;
+      const bayerRow = (y & 3) * 4;
+      const rowBase  = y * this.width * 4;
       for (let x = Math.max(x0, 0); x < xEnd; x++) {
-        const useNext = t > B[bayerRow + (x & 3)] / 16;
+        const useNext = t > BAYER4[bayerRow + (x & 3)] / 16;
         const i = rowBase + x * 4;
         this.data[i]     = useNext ? r1 : r0;
         this.data[i + 1] = useNext ? g1 : g0;
@@ -199,19 +193,14 @@ export class PixelBuffer {
     }
   }
 
-  // Blit pixel buffer to canvas context.
+  // Flush pixel buffer to canvas context (pure data write — no effects applied here).
   flush(ctx) {
-    // apply post render effects
-    applyFullCRTEffect(this.imageData);
     ctx.putImageData(this.imageData, 0, 0);
   }
 
   // Swap the palette at runtime — used when transitioning between demos.
   setPalette(palette) {
-    this._rgb = palette.map(hex => {
-      const v = parseInt(hex.slice(1), 16);
-      return [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff];
-    });
+    this._rgb = palette.map(parseHexColor);
   }
 
   // Internal: write raw RGB without palette lookup (used by fillCircle inner loop).

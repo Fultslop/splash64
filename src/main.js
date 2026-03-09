@@ -5,99 +5,12 @@ import { loadTickerText, createTicker }   from './common/ticker.js';
 import { createSunsetDemo }               from './demo/sunset/sunset.js';
 import { generateSunsetConfig, MAX_DISPLAY_TIME, FADE_DURATION, FADE_IN_DURATION } from './demo/sunset/config.js';
 import { createC64Demo }                  from './demo/c64/c64.js';
-import { generateC64Config }              from './demo/c64/config.js';
+import { generateC64Config, C64_W, C64_H } from './demo/c64/config.js';
 import { buildCharset }                   from './demo/c64/charset.js';
 import { createLoadingScreen }            from './common/loading.js';
-import { setFade }                        from './common/postrender.js';
-
-// C64 buffer includes the authentic border area around the 320×200 active display.
-const C64_W = 384;
-const C64_H = 272;
-
-// FPS counter — DOM overlay, sampled at 2 Hz, toggled by pressing 'f'.
-// Zero cost when hidden: the sample() fn returns immediately.
-function createFpsCounter() {
-  const el = document.createElement('div');
-  el.style.cssText = 'position:fixed;top:8px;left:8px;font:bold 13px monospace;'
-    + 'color:#0f0;background:rgba(0,0,0,.55);padding:2px 8px;display:none;z-index:9999';
-  document.body.appendChild(el);
-
-  let visible = false, frames = 0, accum = 0;
-
-  window.addEventListener('keydown', e => {
-    if (e.key === 'f') {
-      visible = !visible;
-      el.style.display = visible ? 'block' : 'none';
-      frames = 0; accum = 0;  // fresh reading on each toggle-on
-    }
-  });
-
-  return function sample(dt) {
-    if (!visible) return;
-    frames++;
-    accum += dt;
-    if (accum >= 0.5) {
-      el.textContent = `${Math.round(frames / accum)} fps`;
-      frames = 0;
-      accum  = 0;
-    }
-  };
-}
-
-// Music player — off by default, hidden until the ticker phase starts.
-// Config: { src, volume (0..1), visible (show the button at all) }
-// Returns { scheduleReveal(delaySecs) } — reveals the button after a delay; user must click to play.
-function createMusicPlayer({ src, volume = 0.5, visible = false } = {}) {
-  const audio  = new Audio(src);
-  audio.loop   = true;
-  audio.volume = volume;
-
-  const el = document.createElement('div');
-  el.textContent = '\u266a off';
-  el.style.cssText = 'position:fixed;top:8px;right:8px;font:bold 16px monospace;'
-    + 'color:#666;background:rgba(0,0,0,.55);padding:4px 10px;cursor:pointer;'
-    + 'z-index:9999;user-select:none;display:none';
-  document.body.appendChild(el);
-
-  const baseVolume = volume;
-  let playing = false;
-
-  function play()  { playing = true;  audio.play();  el.textContent = '\u266a on';  el.style.color = '#0f0'; }
-  function pause() { playing = false; audio.pause(); el.textContent = '\u266a off'; el.style.color = '#666'; }
-
-  el.addEventListener('click', () => { playing ? pause() : play(); });
-
-  return {
-    // Reveal the button after delaySecs (user still has to click to play).
-    scheduleReveal(delaySecs) {
-      if (!visible) return;
-      setTimeout(() => { el.style.display = 'block'; }, delaySecs * 1000);
-    },
-    // Scale volume by (1 - t) — call with t 0→1 during fade-out.
-    fadeVolume(t) { audio.volume = baseVolume * (1 - t); },
-  };
-}
-
-// Wrap an update function with a fade-to-black auto-reload after maxTime seconds.
-// Resets any in-progress fade from a previous demo when called.
-function wrapWithAutoFade(updateFn, maxTime, fadeDuration, fadeInDuration = 0, onFadeOut = null) {
-  setFade(1);  // start fully black; fade-in will clear it
-  let elapsed = 0;
-  return function(dt) {
-    elapsed += dt;
-    if (elapsed < fadeInDuration) {
-      setFade(1 - elapsed / fadeInDuration);
-    } else if (elapsed > maxTime) {
-      const t = Math.min(1, (elapsed - maxTime) / fadeDuration);
-      setFade(t);
-      onFadeOut?.(t);
-      if (t >= 1) { location.reload(); return; }
-    } else {
-      setFade(0);
-    }
-    updateFn(dt);
-  };
-}
+import { wrapWithAutoFade }               from './common/fade.js';
+import { createFpsCounter }              from './common/ui/fps.js';
+import { createMusicPlayer }             from './common/ui/music.js';
 
 // Choose a demo name, never repeating the previous session's choice.
 function chooseDemoName() {
@@ -111,9 +24,8 @@ function chooseDemoName() {
 
 // Set up and start the sunset demo, swapping in the new palette and update fn.
 // onProgress(0..1): optional callback for loading screen progress reporting.
+// Font must be loaded by the caller before calling this function.
 async function startSunset(buffer, present, setPalette, setUpdate, sampleFps, onProgress, onFadeOut = null) {
-  // C64 Pro Mono is a @font-face font — not fetched until explicitly requested.
-  await document.fonts.load('8px "C64 Pro Mono"');
   onProgress?.(0.5);
 
   // 16px = clean 2× of the native 8px C64 glyph grid.
@@ -141,6 +53,10 @@ async function init() {
   const loading = createLoadingScreen();
 
   await document.fonts.ready;
+  // Force-load the local @font-face font — document.fonts.ready only guarantees
+  // fonts already in the loading queue (i.e. linked via <link> or used in CSS).
+  // A @font-face font that isn't used in any CSS rule is never fetched until here.
+  await document.fonts.load('8px "C64 Pro Mono"');
   loading.setProgress(0.1);
 
   const canvas    = document.getElementById('screen');
@@ -155,11 +71,6 @@ async function init() {
 
   if (demoName === 'c64') {
     renderer.setPalette(C64_PALETTE);
-
-    // Force-load the local @font-face font — document.fonts.ready only guarantees
-    // fonts already in the loading queue (i.e. linked via <link> or used in CSS).
-    // A @font-face font that isn't used in any CSS rule is never fetched until here.
-    await document.fonts.load('8px "C64 Pro Mono"');
     loading.setProgress(0.5);
 
     const charset = buildCharset('C64 Pro Mono', 8);

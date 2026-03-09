@@ -1,6 +1,10 @@
 // C64 demo — session config.
 // generateC64Config() is async because it fetches the ticker text.
 
+// Buffer dimensions: 320×200 active area centred inside the authentic border region.
+export const C64_W = 384;
+export const C64_H = 272;
+
 // Parse inline markdown spans from a newline-delimited string.
 // Strips ** (bold) and ` (code) markers; returns { text, styles }.
 // styles is a Uint8Array parallel to text: 0=normal, 1=bold, 2=code.

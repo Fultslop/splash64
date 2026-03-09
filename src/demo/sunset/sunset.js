@@ -2,65 +2,32 @@
 // Layers (back to front): sky → sun → fuji → temple → trees → boids → title → ticker
 
 import { createParallax } from '../../common/parallax.js';
-import { SKY_STOP_SCALARS, SUN as SUN_CFG } from './config.js';
+import {
+  SKY_STOP_SCALARS, HORIZON_STOP_INDEX,
+  SUN as SUN_CFG,
+  buildFuji, buildRandomFuji, generateParallaxDirection,
+} from './config.js';
 
 // Palette indices (SUNSET array from palette.js)
 const P = {
-  SKY_TOP:    0,
-  SKY_1:      2,
-  SKY_2:      4,
-  SKY_3:      6,
-  SKY_4:      8,
-  SKY_5:      9,
-  HORIZON:    10,
-  GROUND_0:   11,
-  GROUND_1:   12,
-  FUJI:       14,
-  FUJI_DARK:  15,
-  SNOW:       17,
-  SILHOUETTE: 2,
+  SKY_TOP:         0,
+  SKY_1:           2,
+  SKY_2:           4,
+  SKY_3:           6,
+  SKY_4:           8,
+  SKY_5:           9,
+  HORIZON:         10,
+  GROUND_0:        11,
+  GROUND_1:        12,
+  FUJI:            14,
+  FUJI_DARK:       15,
+  SNOW:            17,
+  TEMPLE_COLOR:    2,   // intentionally uses a dark sky color — distinct from tree silhouettes
   TREE_SILHOUETTE: 18,
-  SUN_BRIGHT: 24,
-  SUN_RIM:    25,
-  SUN_EDGE:   26,
+  SUN_BRIGHT:      24,
+  SUN_RIM:         25,
+  SUN_EDGE:        26,
 };
-
-// Build Fuji body + snow polygons from layout parameters.
-// cx/peakY/baseY are pixel coords; shoulderW is the half-width from peak to shoulder elbow.
-// The base always extends beyond both screen edges to keep tiling seamless.
-function buildFujiRandom(width, height) {
-  const peakYScale = 0.25 + Math.random() * 0.20;
-  const shoulderW  = 30 + Math.floor(Math.random() * 50);
-  return buildFuji(
-    Math.floor(width * 0.5),
-    Math.floor(height * peakYScale),
-    shoulderW,
-    Math.floor(height * 0.89),
-    width,
-  );
-}
-
-function buildFuji(cx, peakY, shoulderW, baseY, width) {
-  const shoulderDY = Math.floor(shoulderW * 0.74);
-  const baseHW     = Math.floor(width * 0.5625); // overhangs each edge for seamless tiling
-  const sw = shoulderW;
-  const body = [
-    [cx,          peakY             ],
-    [cx + sw,     peakY + shoulderDY],
-    [cx + baseHW, baseY             ],
-    [cx - baseHW, baseY             ],
-    [cx - sw,     peakY + shoulderDY],
-  ];
-  const snow = [
-    [cx,           peakY - 5           ],
-    [cx + sw*0.52, peakY + sw*0.44|0   ],
-    [cx + sw*0.30, peakY + sw*0.60|0   ],
-    [cx,           peakY + sw*0.52|0   ],
-    [cx - sw*0.30, peakY + sw*0.60|0   ],
-    [cx - sw*0.52, peakY + sw*0.44|0   ],
-  ];
-  return { body, snow };
-}
 
 // Temple: components defined relative to (cx=0, baseY=0), drawn at a fixed position.
 // Each entry is a polygon for one part of the pagoda silhouette.
@@ -89,6 +56,9 @@ const TREE_STRIP = [
   [320, 200],
 ];
 
+// How many pixels above the horizon the temple base floats.
+const TEMPLE_HOVER_ABOVE = 10;
+
 export function createSunsetDemo(buffer, { titleSprite, ticker, config = {} } = {}) {
   const { width, height } = buffer;
 
@@ -101,7 +71,7 @@ export function createSunsetDemo(buffer, { titleSprite, ticker, config = {} } = 
     idx: SKY_PALETTE[i],
   }));
 
-  const horizonY = skyStops[7].y;
+  const horizonY = skyStops[HORIZON_STOP_INDEX].y;
 
   const { peakYScale = 0.325, shoulderW = 50 } = config.mountain ?? {};
   let fujiA = buildFuji(
@@ -111,7 +81,7 @@ export function createSunsetDemo(buffer, { titleSprite, ticker, config = {} } = 
     Math.floor(height * 0.89),
     width,
   );
-  let fujiB = buildFujiRandom(width, height);
+  let fujiB = buildRandomFuji(width, height);
   let prevMountainOx = 0;
 
   const sun = {
@@ -120,35 +90,32 @@ export function createSunsetDemo(buffer, { titleSprite, ticker, config = {} } = 
     r: SUN_CFG.r,
   };
 
-  // Temple sits at a fixed horizontal center, just above horizon.
+  // Temple sits at a fixed horizontal center, just above the horizon.
   const temple = {
     cx:    Math.floor(width * 0.5),
-    baseY: horizonY + -10,
+    baseY: horizonY - TEMPLE_HOVER_ABOVE,
   };
 
   const parallax = createParallax([
     { speed:  4, wrapWidth: 320 },  // 0: fuji
     { speed: 16, wrapWidth: 320 },  // 1: temple
     { speed: 32, wrapWidth: 320 },  // 2: trees
-  ], Math.random() > 0.5 
-    ? (0.75 + Math.random() * 1.5) 
-    : (-0.75 + Math.random() * -1.5));
+  ], config.parallaxDirection ?? generateParallaxDirection());
 
   function drawSky() {
     buffer.fillGradientDithered(skyStops, 12);
   }
 
   function drawSun() {
-    //buffer.fillCircle(sun.x, sun.y, sun.r + 6, P.SUN_EDGE);
     buffer.fillCircle(sun.x, sun.y, sun.r + 3, P.SUN_RIM);
     buffer.fillCircle(sun.x, sun.y, sun.r,     P.SUN_BRIGHT);
   }
 
   function drawMountain() {
     const ox = parallax.getOffset(0);
-    if (Math.abs(ox - prevMountainOx) > 160) {   // offset wrapped (either direction) — new tile scrolls in
+    if (Math.abs(ox - prevMountainOx) > 160) {   // offset wrapped — new tile scrolls in
       fujiA = fujiB;
-      fujiB = buildFujiRandom(width, height);
+      fujiB = buildRandomFuji(width, height);
     }
     prevMountainOx = ox;
     const drawOne = (f, off) => {
@@ -166,7 +133,7 @@ export function createSunsetDemo(buffer, { titleSprite, ticker, config = {} } = 
       const by = temple.baseY;
       for (const part of TEMPLE_PARTS) {
         const pts = part.map(([dx, dy]) => [cx + dx, by + dy]);
-        buffer.fillPolygon(pts, P.SILHOUETTE);
+        buffer.fillPolygon(pts, P.TEMPLE_COLOR);
       }
     });
   }
@@ -184,19 +151,14 @@ export function createSunsetDemo(buffer, { titleSprite, ticker, config = {} } = 
     buffer.blitSprite(titleSprite, titleX, titleY, P.SNOW);
   }
 
-  function drawTicker() {
+  function drawTicker(dt) {
     if (!ticker) return;
-    ticker.update(dt_ref[0]);
-    // buffer.fillRect(0, TICKER_Y, width, TICKER_H, P.SILHOUETTE);
+    ticker.update(dt);
     const textY = TICKER_Y + Math.floor((TICKER_H - ticker.sprite.h) / 2);
     buffer.blitSpriteScrolled(ticker.sprite, 0, textY, P.SNOW, ticker.getScrollX(), width);
   }
 
-  // dt passed via ref so drawTicker can access it without extra param threading.
-  const dt_ref = [0];
-
   function update(dt) {
-    dt_ref[0] = dt;
     parallax.update(dt);
     drawSky();
     drawSun();
@@ -204,7 +166,7 @@ export function createSunsetDemo(buffer, { titleSprite, ticker, config = {} } = 
     drawTemple();
     drawTrees();
     drawTitle();
-    drawTicker();
+    drawTicker(dt);
   }
 
   return { update };

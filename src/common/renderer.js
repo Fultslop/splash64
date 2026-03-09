@@ -2,6 +2,7 @@
 // to fill the browser window (letterboxed, no interpolation).
 
 import { PixelBuffer } from './pixelbuffer.js';
+import { applyFullCRTEffect } from './postrender.js';
 
 export const RENDER_W = 320;
 export const RENDER_H = 200;
@@ -18,7 +19,9 @@ export function initRenderer(displayCanvas, palette, w = RENDER_W, h = RENDER_H)
   window.addEventListener('resize', () => applyScale(displayCanvas, rw, rh));
 
   function present() {
-    _buffer.flush(offscreen.getContext('2d'));
+    const offCtx = offscreen.getContext('2d');
+    applyFullCRTEffect(_buffer.imageData);
+    _buffer.flush(offCtx);
     const { dw, dh } = getScaledSize(rw, rh);
     displayCanvas.width  = dw;
     displayCanvas.height = dh;

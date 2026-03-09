@@ -165,11 +165,3 @@ export const C64_PALETTE = [
 
 // All available palettes — one is chosen at random on startup.
 export const PALETTES = [SUNSET, CRIMSON, OCEAN];
-
-// Returns an object mapping name->hex for a given palette array.
-export function buildPalette(colors) {
-  return colors.reduce((map, hex, i) => {
-    map[i] = hex;
-    return map;
-  }, {});
-}

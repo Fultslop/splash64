@@ -1,8 +1,6 @@
 // Ticker — horizontally scrolling text strip.
 // Text is pre-rasterized into a sprite; scrollX advances each frame and wraps.
 
-import { rasterizeText } from './font.js';
-
 // Fetch a text file, slice lines [startLine, endLine) (0-indexed, endLine null = EOF),
 // strip blank lines, and join into a single scrolling string.
 export async function loadTickerText(url, startLine = 0, endLine = null) {

@@ -245,7 +245,7 @@ export function createC64Demo(buffer, { charset, config, onComplete, onTickerSta
 
       case 'TYPING_RUN': {
         const done = advanceTyping(dt, config.typeSpeed);
-        if (done && phaseTimer >= 3 / config.typeSpeed + 0.35) {
+        if (done && phaseTimer >= 'RUN'.length / config.typeSpeed + 0.35) {
           doRunResponse();
         }
         break;
@@ -318,11 +318,11 @@ export function createC64Demo(buffer, { charset, config, onComplete, onTickerSta
 
       for (let i = 0; i < attrLines.length; i++) {
         const line   = attrLines[i];
-        const lStart = Math.min(attrVanished, line.length);
-        const lEnd   = Math.min(attrVisible,  line.length);
-        if (lEnd > lStart) {
-          drawLine(buffer, 0, 0, line.slice(lStart, lEnd), palette.background, charset,
-            width - line.length * charW + lStart * charW, baseY + i * charH);
+        const revealStart = Math.min(attrVanished, line.length);
+        const revealEnd   = Math.min(attrVisible,  line.length);
+        if (revealEnd > revealStart) {
+          drawLine(buffer, 0, 0, line.slice(revealStart, revealEnd), palette.background, charset,
+            width - line.length * charW + revealStart * charW, baseY + i * charH);
         }
       }
     }
