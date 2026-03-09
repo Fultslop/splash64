@@ -10,9 +10,11 @@ A retro-style HTML5 demo/splash screen engine. Pure ES6+ modules, HTML5 Canvas, 
 ## Render Pipeline
 
 ```
-load page → await fonts.ready → chooseDemoName (localStorage no-repeat)
+load page → createLoadingScreen → await fonts.ready (10%)
+         → chooseDemoName (localStorage no-repeat)
          → initRenderer (w, h per demo) → startLoop (noop)
-         → demo setup → setUpdate(demoUpdate) → running
+         → force-load fonts (50%) → fetch text/config (90–100%)
+         → loading.hide() → setUpdate(demoUpdate) → running
 ```
 
 **Demo swap (c64 → sunset)**:
@@ -32,6 +34,7 @@ c64 DONE phase → onComplete() → renderer.resize(320, 200) → new buffer
 ```
 index.html                      Shell: black bg, centered canvas, pixelated CSS; @font-face for C64 Pro Mono
 src/main.js                     Entry: demo selection, per-demo buffer sizing, font loading, c64→sunset transition
+src/common/loading.js           createLoadingScreen() → { setProgress(0..1), hide() } — CSS overlay, no asset deps
 src/common/renderer.js          initRenderer(canvas, palette, w=320, h=200) → { buffer (getter), present, setPalette, resize }
                                 resize(w, h) → new PixelBuffer — used for c64→sunset size change
                                 startLoop(update) → { setUpdate } — supports live update-fn swap

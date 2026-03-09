@@ -7,6 +7,7 @@ import { generateSunsetConfig }           from './demo/sunset/config.js';
 import { createC64Demo }                  from './demo/c64/c64.js';
 import { generateC64Config }              from './demo/c64/config.js';
 import { buildCharset }                   from './demo/c64/charset.js';
+import { createLoadingScreen }            from './common/loading.js';
 
 // C64 buffer includes the authentic border area around the 320×200 active display.
 const C64_W = 384;
@@ -84,13 +85,23 @@ function chooseDemoName() {
 }
 
 // Set up and start the sunset demo, swapping in the new palette and update fn.
-async function startSunset(buffer, present, setPalette, setUpdate, sampleFps) {
+// onProgress(0..1): optional callback for loading screen progress reporting.
+async function startSunset(buffer, present, setPalette, setUpdate, sampleFps, onProgress) {
+  // Force-load Google Fonts before rasterizing — document.fonts.ready does not
+  // guarantee display:swap fonts are available, only that queued loads have settled.
+  await Promise.all([
+    document.fonts.load('36px Shojumaru'),
+    document.fonts.load('10px "Press Start 2P"'),
+  ]);
+  onProgress?.(0.5);
+
   const titleSprite = rasterizeText('// Fultslop //', 'Shojumaru', 36);
   const config      = generateSunsetConfig(titleSprite);
-
   setPalette(config.palette);
 
   const tickerText   = await loadTickerText('./doc/agent/devlog.md', 10);
+  onProgress?.(0.9);
+
   const tickerSprite = rasterizeText(tickerText, 'Press Start 2P', 10, 1, 1);
   const ticker       = createTicker(tickerSprite, 40);
 
@@ -99,7 +110,10 @@ async function startSunset(buffer, present, setPalette, setUpdate, sampleFps) {
 }
 
 async function init() {
+  const loading = createLoadingScreen();
+
   await document.fonts.ready;
+  loading.setProgress(0.1);
 
   const canvas    = document.getElementById('screen');
   const demoName  = chooseDemoName();
@@ -118,9 +132,12 @@ async function init() {
     // fonts already in the loading queue (i.e. linked via <link> or used in CSS).
     // A @font-face font that isn't used in any CSS rule is never fetched until here.
     await document.fonts.load('8px "C64 Pro Mono"');
+    loading.setProgress(0.5);
 
     const charset = buildCharset('C64 Pro Mono', 8);
     const config  = await generateC64Config();
+    loading.setProgress(1.0);
+    loading.hide();
 
     const onComplete = () => {
       // Shrink to the standard render resolution for the sunset demo.
@@ -132,7 +149,12 @@ async function init() {
     setUpdate(dt => { sampleFps(dt); demo.update(dt); renderer.present(); });
 
   } else {
-    await startSunset(renderer.buffer, renderer.present, renderer.setPalette, setUpdate, sampleFps);
+    // Map startSunset's 0..1 progress into the 0.1..1.0 range (0.1 already consumed above).
+    await startSunset(
+      renderer.buffer, renderer.present, renderer.setPalette, setUpdate, sampleFps,
+      p => loading.setProgress(0.1 + p * 0.9),
+    );
+    loading.hide();
   }
 }
 

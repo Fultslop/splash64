@@ -112,3 +112,13 @@ Format:
 - Signature: `rasterizeText(text, fontFamily, fontSize, scaleX=1, letterSpacing=1)`.
 - Alpha threshold lowered to 32 (was 127) — captures antialiased edge pixels.
 - Ticker now uses Press Start 2P at 10px, scaleX=1, letterSpacing=1.
+
+**09/03/2026 Claude [FIX]**: sunset fonts not reliably loaded before rasterization.
+- `document.fonts.ready` does not guarantee `font-display:swap` Google Fonts are available — it only resolves queued loads.
+- `startSunset` now calls `await Promise.all([document.fonts.load('36px Shojumaru'), document.fonts.load('10px "Press Start 2P"')])` before any `rasterizeText` call. Same pattern already used for C64 Pro Mono.
+
+**09/03/2026 Claude [FEAT]**: shared loading screen for both demos.
+- New `src/common/loading.js`: `createLoadingScreen()` → `{ setProgress(0..1), hide() }`. CSS-only overlay (system monospace, no asset dependencies) so it works before any fonts or canvas are ready.
+- `init()` in `main.js` creates the loading screen immediately, then reports progress through each async step: `fonts.ready` (10%), per-demo font loads (50%), text/config fetches (90–100%), then `hide()`.
+- `startSunset` accepts an optional `onProgress` callback (used for direct startup; omitted on c64→sunset transition where the c64 animation is already running).
+- Architecture: `load page → loading screen → fonts.ready → force-load fonts → fetch text/config → hide loading → demo starts`.
