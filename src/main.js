@@ -3,11 +3,12 @@ import { C64_PALETTE }                    from './common/palette.js';
 import { rasterizeText }                  from './common/font.js';
 import { loadTickerText, createTicker }   from './common/ticker.js';
 import { createSunsetDemo }               from './demo/sunset/sunset.js';
-import { generateSunsetConfig }           from './demo/sunset/config.js';
+import { generateSunsetConfig, MAX_DISPLAY_TIME, FADE_DURATION, FADE_IN_DURATION } from './demo/sunset/config.js';
 import { createC64Demo }                  from './demo/c64/c64.js';
 import { generateC64Config }              from './demo/c64/config.js';
 import { buildCharset }                   from './demo/c64/charset.js';
 import { createLoadingScreen }            from './common/loading.js';
+import { setFade }                        from './common/postrender.js';
 
 // C64 buffer includes the authentic border area around the 320×200 active display.
 const C64_W = 384;
@@ -58,6 +59,7 @@ function createMusicPlayer({ src, volume = 0.5, visible = false } = {}) {
     + 'z-index:9999;user-select:none;display:none';
   document.body.appendChild(el);
 
+  const baseVolume = volume;
   let playing = false;
 
   function play()  { playing = true;  audio.play();  el.textContent = '\u266a on';  el.style.color = '#0f0'; }
@@ -71,6 +73,29 @@ function createMusicPlayer({ src, volume = 0.5, visible = false } = {}) {
       if (!visible) return;
       setTimeout(() => { el.style.display = 'block'; }, delaySecs * 1000);
     },
+    // Scale volume by (1 - t) — call with t 0→1 during fade-out.
+    fadeVolume(t) { audio.volume = baseVolume * (1 - t); },
+  };
+}
+
+// Wrap an update function with a fade-to-black auto-reload after maxTime seconds.
+// Resets any in-progress fade from a previous demo when called.
+function wrapWithAutoFade(updateFn, maxTime, fadeDuration, fadeInDuration = 0, onFadeOut = null) {
+  setFade(1);  // start fully black; fade-in will clear it
+  let elapsed = 0;
+  return function(dt) {
+    elapsed += dt;
+    if (elapsed < fadeInDuration) {
+      setFade(1 - elapsed / fadeInDuration);
+    } else if (elapsed > maxTime) {
+      const t = Math.min(1, (elapsed - maxTime) / fadeDuration);
+      setFade(t);
+      onFadeOut?.(t);
+      if (t >= 1) { location.reload(); return; }
+    } else {
+      setFade(0);
+    }
+    updateFn(dt);
   };
 }
 
@@ -86,13 +111,13 @@ function chooseDemoName() {
 
 // Set up and start the sunset demo, swapping in the new palette and update fn.
 // onProgress(0..1): optional callback for loading screen progress reporting.
-async function startSunset(buffer, present, setPalette, setUpdate, sampleFps, onProgress) {
+async function startSunset(buffer, present, setPalette, setUpdate, sampleFps, onProgress, onFadeOut = null) {
   // C64 Pro Mono is a @font-face font — not fetched until explicitly requested.
   await document.fonts.load('8px "C64 Pro Mono"');
   onProgress?.(0.5);
 
   // 16px = clean 2× of the native 8px C64 glyph grid.
-  const titleSprite = rasterizeText('// Fultslop //', 'C64 Pro Mono', 16, 1, 1);
+  const titleSprite = rasterizeText('//  SPLASH 64  //', 'C64 Pro Mono', 16, 1, 1);
   const config      = generateSunsetConfig(titleSprite);
   setPalette(config.palette);
 
@@ -103,7 +128,13 @@ async function startSunset(buffer, present, setPalette, setUpdate, sampleFps, on
   const ticker       = createTicker(tickerSprite, 40);
 
   const demo = createSunsetDemo(buffer, { titleSprite, ticker, config });
-  setUpdate(dt => { sampleFps(dt); demo.update(dt); present(); });
+  setUpdate(wrapWithAutoFade(
+    dt => { sampleFps(dt); demo.update(dt); present(); },
+    MAX_DISPLAY_TIME,
+    FADE_DURATION,
+    FADE_IN_DURATION,
+    onFadeOut,
+  ));
 }
 
 async function init() {
@@ -139,11 +170,17 @@ async function init() {
     const onComplete = () => {
       // Shrink to the standard render resolution for the sunset demo.
       const newBuffer = renderer.resize(RENDER_W, RENDER_H);
-      startSunset(newBuffer, renderer.present, renderer.setPalette, setUpdate, sampleFps);
+      startSunset(newBuffer, renderer.present, renderer.setPalette, setUpdate, sampleFps, undefined, t => music.fadeVolume(t));
     };
     const onTickerStart = () => music.scheduleReveal(config.musicDelay ?? 0);
     const demo = createC64Demo(renderer.buffer, { charset, config, onComplete, onTickerStart });
-    setUpdate(dt => { sampleFps(dt); demo.update(dt); renderer.present(); });
+    setUpdate(wrapWithAutoFade(
+      dt => { sampleFps(dt); demo.update(dt); renderer.present(); },
+      config.maxDisplayTime,
+      config.fadeDuration,
+      config.fadeInDuration,
+      t => music.fadeVolume(t),
+    ));
 
   } else {
     // Map startSunset's 0..1 progress into the 0.1..1.0 range (0.1 already consumed above).

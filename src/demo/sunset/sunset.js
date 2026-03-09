@@ -18,33 +18,49 @@ const P = {
   FUJI:       14,
   FUJI_DARK:  15,
   SNOW:       17,
-  SILHOUETTE: 18,
+  SILHOUETTE: 2,
+  TREE_SILHOUETTE: 18,
   SUN_BRIGHT: 24,
   SUN_RIM:    25,
   SUN_EDGE:   26,
 };
 
-// --- Shape definitions (all in local 320-wide coordinate space) ---
+// Build Fuji body + snow polygons from layout parameters.
+// cx/peakY/baseY are pixel coords; shoulderW is the half-width from peak to shoulder elbow.
+// The base always extends beyond both screen edges to keep tiling seamless.
+function buildFujiRandom(width, height) {
+  const peakYScale = 0.25 + Math.random() * 0.20;
+  const shoulderW  = 30 + Math.floor(Math.random() * 50);
+  return buildFuji(
+    Math.floor(width * 0.5),
+    Math.floor(height * peakYScale),
+    shoulderW,
+    Math.floor(height * 0.89),
+    width,
+  );
+}
 
-const FUJI_BODY = [
-  [160,  65],
-  [210, 102],
-  [340, 178],
-  [-20, 178],
-  [110, 102],
-];
-
-// Bottom Y of the mountain body — used for the base dither strip.
-const FUJI_BASE_Y = 178;
-
-const FUJI_SNOW = [
-  [160,  60],
-  [186,  87],
-  [175,  95],
-  [160,  91],
-  [145,  95],
-  [134,  87],
-];
+function buildFuji(cx, peakY, shoulderW, baseY, width) {
+  const shoulderDY = Math.floor(shoulderW * 0.74);
+  const baseHW     = Math.floor(width * 0.5625); // overhangs each edge for seamless tiling
+  const sw = shoulderW;
+  const body = [
+    [cx,          peakY             ],
+    [cx + sw,     peakY + shoulderDY],
+    [cx + baseHW, baseY             ],
+    [cx - baseHW, baseY             ],
+    [cx - sw,     peakY + shoulderDY],
+  ];
+  const snow = [
+    [cx,           peakY - 5           ],
+    [cx + sw*0.52, peakY + sw*0.44|0   ],
+    [cx + sw*0.30, peakY + sw*0.60|0   ],
+    [cx,           peakY + sw*0.52|0   ],
+    [cx - sw*0.30, peakY + sw*0.60|0   ],
+    [cx - sw*0.52, peakY + sw*0.44|0   ],
+  ];
+  return { body, snow };
+}
 
 // Temple: components defined relative to (cx=0, baseY=0), drawn at a fixed position.
 // Each entry is a polygon for one part of the pagoda silhouette.
@@ -87,6 +103,17 @@ export function createSunsetDemo(buffer, { titleSprite, ticker, config = {} } = 
 
   const horizonY = skyStops[7].y;
 
+  const { peakYScale = 0.325, shoulderW = 50 } = config.mountain ?? {};
+  let fujiA = buildFuji(
+    Math.floor(width * 0.5),
+    Math.floor(height * peakYScale),
+    shoulderW,
+    Math.floor(height * 0.89),
+    width,
+  );
+  let fujiB = buildFujiRandom(width, height);
+  let prevMountainOx = 0;
+
   const sun = {
     x: Math.floor(width  * SUN_CFG.xScale),
     y: Math.floor(height * SUN_CFG.yScale),
@@ -96,7 +123,7 @@ export function createSunsetDemo(buffer, { titleSprite, ticker, config = {} } = 
   // Temple sits at a fixed horizontal center, just above horizon.
   const temple = {
     cx:    Math.floor(width * 0.5),
-    baseY: horizonY + 0 ,
+    baseY: horizonY + -10,
   };
 
   const parallax = createParallax([
@@ -116,12 +143,19 @@ export function createSunsetDemo(buffer, { titleSprite, ticker, config = {} } = 
   }
 
   function drawMountain() {
-    parallax.drawTiled(0, (ox) => {
-      buffer.fillPolygon(FUJI_BODY, P.FUJI,      ox);
-      buffer.fillPolygon(FUJI_SNOW, P.FUJI_DARK, ox);
-      buffer.fillPolygon(FUJI_SNOW, P.SNOW,      ox);
-    });
-    
+    const ox = parallax.getOffset(0);
+    if (ox < prevMountainOx) {   // offset wrapped — new tile scrolls in
+      fujiA = fujiB;
+      fujiB = buildFujiRandom(width, height);
+    }
+    prevMountainOx = ox;
+    const drawOne = (f, off) => {
+      buffer.fillPolygon(f.body, P.FUJI,      off);
+      buffer.fillPolygon(f.snow, P.FUJI_DARK, off);
+      buffer.fillPolygon(f.snow, P.SNOW,      off);
+    };
+    drawOne(fujiA, -ox);
+    drawOne(fujiB, 320 - ox);
   }
 
   function drawTemple() {
@@ -137,7 +171,7 @@ export function createSunsetDemo(buffer, { titleSprite, ticker, config = {} } = 
 
   function drawTrees() {
     parallax.drawTiled(2, (ox) => {
-      buffer.fillPolygon(TREE_STRIP, P.SILHOUETTE, ox);
+      buffer.fillPolygon(TREE_STRIP, P.TREE_SILHOUETTE, ox);
     });
   }
 
@@ -151,7 +185,7 @@ export function createSunsetDemo(buffer, { titleSprite, ticker, config = {} } = 
   function drawTicker() {
     if (!ticker) return;
     ticker.update(dt_ref[0]);
-    buffer.fillRect(0, TICKER_Y, width, TICKER_H, P.SILHOUETTE);
+    // buffer.fillRect(0, TICKER_Y, width, TICKER_H, P.SILHOUETTE);
     const textY = TICKER_Y + Math.floor((TICKER_H - ticker.sprite.h) / 2);
     buffer.blitSpriteScrolled(ticker.sprite, 0, textY, P.SNOW, ticker.getScrollX(), width);
   }

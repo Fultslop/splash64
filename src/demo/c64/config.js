@@ -71,7 +71,7 @@ export async function generateC64Config() {
       '',
       'READY.',
     ],
-    loadCmd:       'LOAD "FULTSLOP",8,1',
+    loadCmd:       'LOAD "// SPLASH 64 //",8,1',
     tickerText,
     tickerStyles,
     attributions,
@@ -89,10 +89,15 @@ export async function generateC64Config() {
     settleColors: [14, 7, 3],  // light blue, yellow, cyan
 
     // --- Timing ---
-    typeSpeed:     10,   // chars/sec — user typing (LOAD, RUN)
-    outputSpeed:   25,   // chars/sec — program output (ticker text)
-    waitReady:     0.8,  // seconds to blink cursor at each READY prompt
-    waitDone:      5.0,  // seconds to hold screen after ticker finishes
-    musicDelay:    0.0,  // seconds after ticker starts before music plays
+    typeSpeed:      10,   // chars/sec — user typing (LOAD, RUN)
+    outputSpeed:    25,   // chars/sec — program output (ticker text)
+    waitReady:      0.8,  // seconds to blink cursor at each READY prompt
+    waitDone:       5.0,  // seconds to hold screen after ticker finishes
+    musicDelay:     0.0,  // seconds after ticker starts before music plays
+
+    // --- Auto-transition ---
+    maxDisplayTime:  45,  // seconds before fade-to-black and page reload
+    fadeDuration:   1.0,  // seconds for the fade-out
+    fadeInDuration: 2.0,  // seconds for the fade-in at demo start
   };
 }

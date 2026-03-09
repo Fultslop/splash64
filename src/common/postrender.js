@@ -1,6 +1,9 @@
 let cachedHeight = 0;
 let scanlineTable = null;
 
+let fadeBlack = 0;
+export function setFade(t) { fadeBlack = Math.max(0, Math.min(1, t)); }
+
 function updateScanlineTable(h, strength) {
     scanlineTable = new Float32Array(h);
     for (let y = 0; y < h; y++) {
@@ -64,7 +67,7 @@ export function applyFullCRTEffect(imageData, {
             }
 
             // 3. Final Multiplier
-            const finalMult = scanline * vignette * boost;
+            const finalMult = scanline * vignette * boost * (1 - fadeBlack);
             
             data[i]     = Math.min(255, r * finalMult);
             data[i + 1] = Math.min(255, g * finalMult);
