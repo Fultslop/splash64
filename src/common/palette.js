@@ -170,7 +170,10 @@ export const C64_PALETTE = [
 //  6–7:   road-side grass (dark / light)
 //  8–9:   rumble strip (red / white)
 //  10:    center dashes (yellow)
-//  11–26: unused (black padding)
+//  11–12: grass avg (narrow-road blend colours)
+//  13–19: billboard layers (shadow → leaf light; desert: cactus layers)
+//  20–25: car sprite (shadow, body, interior, helmet ×2, detail)
+//  26:    unused
 //  27–31: UI (white, black, grey, red, cyan) — same as sunset convention
 export const DRIVE_PALETTE = [
   '#0698ff', // 0  deep night blue (sky top)

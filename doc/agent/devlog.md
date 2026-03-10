@@ -7,6 +7,32 @@ Format:
 
 ---
 
+**10/03/2026 Claude [REFACTOR]**: codebase review — DRY, coupling, and two bug fixes.
+- `renderer.js`: `resize()` now tracks `_palette` in the closure so a prior `setPalette()` survives a resize (was silently reverting). `present()` no longer resets `canvas.width/height` every frame — `applyDisplaySize()` guards with a change check.
+- `c64.js`: `doRunResponse()` now resets `charAccum = 0` — fixes carry-over from `TYPING_RUN` that caused the first ticker char(s) to appear early.
+- New `src/common/color.js`: shared `parseHexColor`; removed duplicate implementations in `pixelbuffer.js` and `loadSprite.js`.
+- New `src/common/credits.js`: `parseCreditsLines / loadRawCreditLines / wrapLine / buildCreditLines` extracted from `main.js`.
+- `drive/config.js`: `BASE_ROAD`, `BASE_DISPLAY_TIMING`, `BASE_CREDITS`, `BASE_PALM_GEOM`, `BASE_PALM_SLOTS` — 4 variant generators spread shared bases, override what differs. File ~40 lines shorter.
+- `drive.js`: `PALM_LAYER_COLORS` derived from `P.PALM_SHADOW`; `W/H` replaced with `RENDER_W/H` import; `get_grass_color` → `getGrassColor`.
+- `main.js`: `restart()` eliminated — `launchDemo(name)` closure handles all transitions; `chooseDemoName()` called exactly once per transition.
+
+**09/03/2026 FS [FEAT]**: drive demo — 4 distinct palette variants with per-variant palms/cacti and stars.
+- `palette.js`: added `DRIVE_DESERT` (scorched earth, sand-invisible rumble strips), `DRIVE_NIGHT` (midnight navy, faint brake-light rumble), `DRIVE_SYNTHWAVE` (indigo → vivid violet, hot-magenta + cyan rumble). Each is a full 32-slot palette.
+- `config.js`: `generateDriveConfig()` now persists `lastDriveVariant` in `localStorage` so page refreshes also rotate variants (no in-memory state needed).
+- Desert variant swaps palms for cactus sprites; `drive.js` reads `config.variant === 'desert'` to select `cactusVariants` over `palmVariants`.
+- Stars added for night + synthwave: 85–114 per session, drawn once on sky each frame; synthwave gets ~1/3 neon-cyan stars.
+- Billboard `flipX` now randomised once per world-instance (keyed by slot+segment), held stable while visible, evicted from a `Map` when out of range — no more per-frame randomness.
+- Palm slots increased from 3 → 5 per variant (extra pair at `xGap: 1.5` for density) across all four variants.
+
+**09/03/2026 FS [FEAT]**: drive demo — scrolling credits overlay.
+- `drive.js`: `creditLines[]` param (pre-rasterised sprites, null = spacer). Lines scroll upward continuously in a clip zone between the title and the car; wrap when the last line clears the top.
+- Per-variant `credits.speed` in config (14 px/s desert, 15 night, 18 daytime, 22 synthwave).
+- `main.js`: `parseCreditsLines(raw)` strips markdown (headings uppercased, links resolved, fences dropped, `---` → blank); `wrapLine(text, maxChars)` breaks at word boundaries; `buildCreditLines` rasterises to sprites using C64 Pro Mono 8 px.
+- Credits source is the project README — fetched alongside other assets during the loading phase.
+- `PixelBuffer.blitSpriteClipped()` new primitive: draws a sprite with hard top/bottom clip bounds and an optional fade half-height for smooth entry/exit.
+
+**09/03/2026 FS [CHORE]**: enable all three demos in rotation (`src/config.js`).
+
 **09/03/2026 Claude [FEAT]**: `drive` demo — OutRun-style pseudo-3D road.
 - `src/demo/drive/drive.js`: raster-projection road using 1/y perspective per scanline. Zebra stripes, grass verges, red/white rumble strips, yellow center dashes — all from `fillRect(…, 1, idx)` per row. No new engine primitives needed.
 - `src/demo/drive/config.js`: `generateDriveConfig()` — palette, scroll speed (slight per-session random variation), stripe/grass/rumble periods, timing.

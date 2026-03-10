@@ -17,7 +17,7 @@
 // A fixed full-width horizon strip at y=horizonY acts as a visual anchor so the
 // viewer sees the horizon as stationary and reads the road — not the camera — as curving.
 
-const W = 320, H = 200;
+import { RENDER_W as W, RENDER_H as H } from '../../common/renderer.js';
 
 // Palette index constants — must match DRIVE_PALETTE slot layout in palette.js.
 const P = {
@@ -47,15 +47,8 @@ const P = {
 };
 
 // Color index for each palm layer (indexed 0–6, matching loadSprite.js layer order).
-const PALM_LAYER_COLORS = [
-  13, // 0  shadow / outline
-  14, // 1  trunk dark
-  15, // 2  trunk mid
-  16, // 3  trunk light
-  17, // 4  leaf dark
-  18, // 5  leaf mid
-  19, // 6  leaf light
-];
+// Derives from P.PALM_SHADOW so a palette slot reassignment only requires updating P.
+const PALM_LAYER_COLORS = Array.from({ length: 7 }, (_, i) => P.PALM_SHADOW + i);
 
 // Smooth ease-in-out (quadratic).
 function easeInOut(t) {
@@ -209,7 +202,7 @@ export function createDriveDemo(buffer, { config, titleSprite, palmVariants = nu
     return results;
   }
 
-  function get_grass_color(grassStripe, halfW)  {
+  function getGrassColor(grassStripe, halfW)  {
     if (halfW < 12) {
       return P.GRASS_AVG
     }
@@ -264,7 +257,7 @@ export function createDriveDemo(buffer, { config, titleSprite, palmVariants = nu
       const rumbW  = Math.max(0, Math.round(halfW * rumbleWidth));
 
       const roadColor   = roadStripe   ? P.ROAD_LIGHT  : P.ROAD_DARK;
-      const grassColor  = get_grass_color(grassStripe, halfW);
+      const grassColor  = getGrassColor(grassStripe, halfW);
       const rumbleColor = rumbleStripe ? P.RUMBLE_WHITE : P.RUMBLE_RED;
       const fogT        = fogMax * Math.max(0, 1 - perspective / fogCutoff);
 

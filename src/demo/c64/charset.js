@@ -27,7 +27,7 @@ function rasterizeGlyph(ch, fontSpec, charW, charH) {
 
   for (let y = 0; y < charH; y++) {
     for (let x = 0; x < charW; x++) {
-      if (data[(y * charW + x) * 4 + 3] > 32) {
+      if (data[(y * charW + x) * 4 + 3] > 200) {
         pixels.push([x, y]);
         if (y > maxY) maxY = y;
       }

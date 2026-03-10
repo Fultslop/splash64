@@ -22,7 +22,7 @@ function rasterizeChar(char, fontSpec, canvasH) {
 
   for (let y = 0; y < canvasH; y++) {
     for (let x = 0; x < w; x++) {
-      if (data[(y * w + x) * 4 + 3] > 32) {
+      if (data[(y * w + x) * 4 + 3] > 200) {
         pixels.push([x, y]);
         if (x > maxX) maxX = x;
         if (y > maxY) maxY = y;
