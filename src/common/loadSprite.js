@@ -1,4 +1,7 @@
 // loadSprite — general PNG-to-sprite-layers loader.
+
+import { parseHexColor } from './color.js';
+
 //
 // loadSprite(url, classify, nLayers)
 //   url      — path to a PNG
@@ -100,10 +103,7 @@ export async function loadSprite(url, classify = classifyPalmPixel, nLayers = PA
 // PixelBuffer.blitPalettizedScaled / blitPalettized.
 export async function loadSpriteQuantized(url, palette) {
   // Pre-parse palette to [r,g,b] once.
-  const rgb = palette.map(hex => {
-    const v = parseInt(hex.slice(1), 16);
-    return [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff];
-  });
+  const rgb = palette.map(parseHexColor);
 
   return new Promise((resolve, reject) => {
     const img = new Image();

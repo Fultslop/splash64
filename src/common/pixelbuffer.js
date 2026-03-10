@@ -2,6 +2,8 @@
 // All drawing uses palette indices (0–31). The palette is fixed at construction,
 // enforcing the 32-color constraint and enabling palette swapping.
 
+import { parseHexColor } from './color.js';
+
 // 4×4 Bayer ordered-dither matrix, values 0–15 (threshold = value / 16).
 const BAYER4 = [
    0,  8,  2, 10,
@@ -9,11 +11,6 @@ const BAYER4 = [
    3, 11,  1,  9,
   15,  7, 13,  5,
 ];
-
-function parseHexColor(hex) {
-  const v = parseInt(hex.slice(1), 16);
-  return [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff];
-}
 
 export class PixelBuffer {
   constructor(width, height, palette) {

@@ -129,6 +129,7 @@ export function createC64Demo(buffer, { charset, config, onComplete, onTickerSta
     // The "program" starts — begin outputting ticker text and attribution.
     tickerText  = config.tickerText.toUpperCase();
     tickerIdx   = 0;
+    charAccum   = 0;  // reset carry-over from TYPING_RUN
     pushLine('');
     loadNextAttribution();
     onTickerStart?.();
