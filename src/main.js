@@ -1,7 +1,7 @@
 import { initRenderer, startLoop, RENDER_W, RENDER_H } from './common/renderer.js';
 import { C64_PALETTE }                    from './common/palette.js';
 import { rasterizeText }                  from './common/font.js';
-import { loadTickerText, createTicker }   from './common/ticker.js';
+import { processTickerText, createTicker } from './common/ticker.js';
 import { createSunsetDemo }               from './demo/sunset/sunset.js';
 import { generateSunsetConfig, MAX_DISPLAY_TIME, FADE_DURATION, FADE_IN_DURATION } from './demo/sunset/config.js';
 import { createC64Demo }                  from './demo/c64/c64.js';
@@ -31,18 +31,15 @@ function chooseDemoName() {
 }
 
 // Set up and start the sunset demo, swapping in the new palette and update fn.
-// Font must be loaded by the caller before calling this function.
-async function startSunset(buffer, present, setPalette, setUpdate, sampleFps, onFadeOut = null, onComplete = null) {
-  // 16px = clean 2× of the native 8px C64 glyph grid.
-  const titleSprite = rasterizeText('//  SPLASH 64  //', 'C64 Pro Mono', 16, 1, 1);
-  const config      = Object.assign(generateSunsetConfig(titleSprite), DEMOS.sunset ?? {});
+// All assets (titleSprite, tickerSprite) must be pre-built by the caller during
+// the loading phase. startSunset is synchronous — no processing happens here.
+// A fresh ticker wrapper is created each call so scrollX resets to 0.
+function startSunset(buffer, present, setPalette, setUpdate, sampleFps, titleSprite, tickerSprite, onFadeOut = null, onComplete = null) {
+  const config = Object.assign(generateSunsetConfig(titleSprite), DEMOS.sunset ?? {});
   setPalette(config.palette);
 
-  const tickerText   = await loadTickerText('./doc/agent/devlog.md', 10);
-  const tickerSprite = rasterizeText(tickerText, 'C64 Pro Mono', 8, 1, 1);
-  const ticker       = createTicker(tickerSprite, 40);
-
-  const demo = createSunsetDemo(buffer, { titleSprite, ticker, config });
+  const ticker = createTicker(tickerSprite, 40);
+  const demo   = createSunsetDemo(buffer, { titleSprite, ticker, config });
   setUpdate(wrapWithAutoFade(
     dt => { sampleFps(dt); demo.update(dt); present(); },
     MAX_DISPLAY_TIME,
@@ -65,12 +62,20 @@ async function init() {
   store.addSpriteQuantized('car',      './graphics/car.png',      DRIVE_PALETTE);
   store.addSpriteQuantized('car-left', './graphics/car-left.png', DRIVE_PALETTE);
   store.addText('credits-raw', './README.md');
+  store.addText('devlog',      './doc/agent/devlog.md');
   store.addMusic('music', { src: './music/very-superbeep.mp3', volume: 0.5, visible: true });
 
   const onProgress = p => loading.setProgress(p);
   store.onProgress(onProgress);
   await store.load();
   store.offProgress(onProgress);
+
+  // All async I/O is done. Rasterize text assets now, before hiding the loading
+  // screen, so the demo can start immediately when loading.hide() is called.
+  // 16px = clean 2× of the native 8px C64 glyph grid.
+  const sunsetTitleSprite  = rasterizeText('//  SPLASH 64  //', 'C64 Pro Mono', 16, 1, 1);
+  const tickerText         = processTickerText(store.get('devlog'), 10);
+  const sunsetTickerSprite = rasterizeText(tickerText, 'C64 Pro Mono', 8, 1, 1);
 
   const palmVariants   = [store.get('palm1'), store.get('palm2')];
   const cactusVariants = [store.get('cactus1'), store.get('cactus2')];
@@ -99,6 +104,7 @@ async function init() {
         const onComplete = () => {
           const newBuf = renderer.resize(RENDER_W, RENDER_H);
           startSunset(newBuf, renderer.present, renderer.setPalette, setUpdate, sampleFps,
+            sunsetTitleSprite, sunsetTickerSprite,
             t => music.fadeVolume(t), () => launchDemo(chooseDemoName()));
         };
         const onTickerStart = () => music.scheduleReveal(config.musicDelay ?? 0);
@@ -126,23 +132,24 @@ async function init() {
     } else {
       const newBuf = renderer.resize(RENDER_W, RENDER_H);
       startSunset(newBuf, renderer.present, renderer.setPalette, setUpdate, sampleFps,
+        sunsetTitleSprite, sunsetTickerSprite,
         t => music.fadeVolume(t), () => launchDemo(chooseDemoName()));
     }
   }
 
   // --- Initial boot ---
+  loading.hide();
+
   if (firstDemo === 'c64') {
-    loading.hide();
     launchDemo('c64');
 
   } else if (firstDemo === 'drive') {
-    loading.hide();
     launchDemo('drive');
 
   } else {
-    loading.hide();
-    await startSunset(
+    startSunset(
       renderer.buffer, renderer.present, renderer.setPalette, setUpdate, sampleFps,
+      sunsetTitleSprite, sunsetTickerSprite,
       undefined, () => launchDemo(chooseDemoName()),
     );
   }

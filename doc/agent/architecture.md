@@ -10,11 +10,9 @@ A retro-style HTML5 demo/splash screen engine. Pure ES6+ modules, HTML5 Canvas, 
 ## Render Pipeline
 
 ```
-load page → createLoadingScreen → await fonts.ready (10%)
-         → chooseDemoName (localStorage no-repeat)
-         → initRenderer (w, h per demo) → startLoop (noop)
-         → force-load fonts (50%) → fetch text/config (90–100%)
-         → loading.hide() → setUpdate(demoUpdate) → running
+load page → createLoadingScreen → store.load() [fonts, sprites, text files — concurrent]
+         → rasterize text sprites (title, ticker) [CPU-bound, loading screen still visible]
+         → loading.hide() → setUpdate(demoUpdate) → running immediately
 ```
 
 **Demo swap (c64 → sunset)**:
@@ -118,6 +116,7 @@ Slot layout (must be preserved when adding new palettes):
 `rasterizeText(text, fontFamily, fontSize, scaleX=1, letterSpacing=1)` → `{ pixels: [[dx,dy],...], w, h }`
 
 - Rasterizes **character by character** — each char to its own small canvas, placed manually
+- **Glyph cache** (`glyphCache` in `font.js`): results cached by `(fontSpec, char)` — a 17K-char ticker string pays canvas cost only for ~70 unique glyphs, not 17,000. Cache is module-level and persists for the page lifetime.
 - This avoids browser canvas size limits (long strings overflow at ~16k px) and gives full letter spacing control
 - Alpha threshold: **> 32** (not 127) — captures antialiased edge pixels that would otherwise drop out
 - `scaleX`: integer horizontal pixel stretch (1=normal, 2=double-wide)
@@ -128,7 +127,7 @@ Slot layout (must be preserved when adding new palettes):
 - Scrolling text: `buffer.blitSpriteScrolled(sprite, x, y, idx, scrollX, viewW)`
 
 **Ticker** (`src/common/ticker.js`):
-- `loadTickerText(url, startLine, endLine)`: `fetch` a text file, slice lines, strip blanks, join with ` · ` separator — used by sunset demo
+- `processTickerText(raw, startLine, endLine)`: slice lines from a raw string, strip blanks, join with ` · ` separator. Call with text from `store.get(key)` after `store.load()`.
 - `createTicker(sprite, speed)` → `{ update(dt), getScrollX(), sprite }`: advances scrollX at speed px/sec, wraps at `sprite.w`
 
 **C64 printer text** (`src/demo/c64/config.js`):
@@ -240,6 +239,7 @@ Tuneable constants exported from `config.js`: `TICKER_H`, `TITLE_TICKER_GAP`.
 
 - Shapes defined in local 320-wide coordinate space; `offsetX` applied at draw time
 - Demo `createXxxDemo(buffer, assets)` receives pre-built sprites + a `config` object
-- Asset generation (font rasterization) happens in `main.js` after fonts load; config generated immediately after
+- **All loading and processing happens before `loading.hide()`** — text fetches go in the asset store; rasterization runs after `store.load()` but before `loading.hide()`. Once the loading screen is gone the demo starts immediately, with zero processing left to do.
+- **No allocation or processing during demo runtime** — minimize `new`, avoid canvas operations, fetches, or rasterization while the rAF loop is rendering. Pre-build everything in the loading phase.
 - All randomisation is centralised in `config.js` — demos are deterministic given a config
 - No state outside of demo factory closures

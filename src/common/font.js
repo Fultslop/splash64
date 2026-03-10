@@ -1,8 +1,19 @@
 // Font — rasterizes text into a palette-friendly sprite.
 // Each character is rasterized individually, then placed with explicit letter spacing.
 // Call after document.fonts.ready to ensure web fonts are available.
+//
+// Glyph results are cached by (fontSpec, char) so that long strings (e.g. the
+// ticker, which may be 10k+ characters) pay the canvas-creation cost only once
+// per unique glyph — typically ~60–70 distinct characters for C64 Pro Mono.
+
+// Cache: fontSpec → Map(char → { pixels, w, h })
+const glyphCache = new Map();
 
 function rasterizeChar(char, fontSpec, canvasH) {
+  let fontMap = glyphCache.get(fontSpec);
+  if (!fontMap) { fontMap = new Map(); glyphCache.set(fontSpec, fontMap); }
+  if (fontMap.has(char)) return fontMap.get(char);
+
   const probe = document.createElement('canvas').getContext('2d');
   probe.font = fontSpec;
   const w = Math.ceil(probe.measureText(char).width) + 2;
@@ -30,7 +41,9 @@ function rasterizeChar(char, fontSpec, canvasH) {
     }
   }
 
-  return { pixels, w: maxX + 1, h: maxY + 1 };
+  const result = { pixels, w: maxX + 1, h: maxY + 1 };
+  fontMap.set(char, result);
+  return result;
 }
 
 // Returns { pixels: [[dx, dy], ...], w, h }

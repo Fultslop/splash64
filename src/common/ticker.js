@@ -1,10 +1,11 @@
 // Ticker — horizontally scrolling text strip.
 // Text is pre-rasterized into a sprite; scrollX advances each frame and wraps.
 
-// Fetch a text file, slice lines [startLine, endLine) (0-indexed, endLine null = EOF),
-// strip blank lines, and join into a single scrolling string.
-export async function loadTickerText(url, startLine = 0, endLine = null) {
-  const raw    = await fetch(url).then(r => r.text());
+// Slice and join raw text into a single scrolling string.
+// startLine/endLine are 0-indexed; endLine null means EOF.
+// Blank lines are stripped; non-blank lines are joined with ' · ' separators.
+// Call with text fetched via the asset store (store.addText / store.get).
+export function processTickerText(raw, startLine = 0, endLine = null) {
   const lines  = raw.split('\n');
   const sliced = lines.slice(startLine, endLine ?? lines.length);
   return sliced

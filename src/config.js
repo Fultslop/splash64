@@ -12,6 +12,6 @@
 //   { c64: {}, sunset: {}, drive: {} }  — full rotation (default)
 export const DEMOS = {
   c64:    {},
-  //sunset: {},
+  sunset: {},
   drive:  {},
 };
